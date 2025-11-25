@@ -53,21 +53,22 @@ export interface User {
     id: string;
     username: string;
     email: string;
+    phone: string | null;
     password: string;
     created_at: string;
     updated_at: string;
 }
 
-export function createUser(id: string, username: string, email: string, password: string): User {
+export function createUser(id: string, username: string, email: string, password: string, phone?: string): User {
     const now = new Date().toISOString();
     const stmt = db.prepare(`
-    INSERT INTO users (id, username, email, password, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO users (id, username, email, phone, password, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-    stmt.run(id, username, email.toLowerCase(), password, now, now);
+    stmt.run(id, username, email.toLowerCase(), phone || null, password, now, now);
 
-    return { id, username, email: email.toLowerCase(), password, created_at: now, updated_at: now };
+    return { id, username, email: email.toLowerCase(), phone: phone || null, password, created_at: now, updated_at: now };
 }
 
 export function getUserByEmail(email: string): User | null {

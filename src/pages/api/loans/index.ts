@@ -10,6 +10,7 @@ import {
     getPaymentsByLoanId
 } from '../../../../db/index';
 import { sendLoanInvitation } from '../../../utils/email';
+import { notifyLoanInvitation } from '../../../utils/whatsapp';
 
 // Helper to get session
 function getSession(cookies: any) {
@@ -33,7 +34,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         const body = await request.json();
-        const { borrowerEmail, borrowerName, amount, description } = body;
+        const { borrowerEmail, borrowerName, borrowerPhone, amount, description } = body;
 
         // Validate input
         if (!borrowerEmail || !borrowerName || !amount || !description) {
@@ -61,7 +62,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const existingContact = getContactByEmail(session.userId, borrowerEmail);
         if (!existingContact) {
             try {
-                createContact(session.userId, borrowerEmail, borrowerName);
+                createContact(session.userId, borrowerEmail, borrowerName, borrowerPhone);
             } catch (error) {
                 console.error('Error creating contact:', error);
                 // Don't fail loan creation if contact creation fails
@@ -77,28 +78,57 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             }), { status: 404 });
         }
 
-        // Send email invitation
         const appUrl = import.meta.env.APP_URL || 'http://localhost:4321';
         const invitationUrl = `${appUrl}/invitation/${invitationToken}`;
 
-        const emailResult = await sendLoanInvitation({
-            lenderName: lender.username,
-            borrowerEmail,
-            borrowerName,
-            amount,
-            description,
-            invitationUrl
-        });
+        let notificationSent = false;
+        let notificationMethod = 'none';
 
-        if (!emailResult.success) {
-            console.error('Failed to send email:', emailResult.error);
-            // Don't fail the loan creation, just log the error
+        // Try WhatsApp first if phone is provided
+        if (borrowerPhone) {
+            const whatsappResult = await notifyLoanInvitation({
+                lenderName: lender.username,
+                borrowerPhone,
+                borrowerName,
+                amount,
+                description,
+                invitationUrl
+            });
+
+            if (whatsappResult.success) {
+                notificationSent = true;
+                notificationMethod = 'whatsapp';
+                console.log('✅ WhatsApp notification sent successfully');
+            } else {
+                console.error('❌ WhatsApp notification failed:', whatsappResult.error);
+            }
+        }
+
+        // Fallback to email if WhatsApp failed or no phone provided
+        if (!notificationSent) {
+            const emailResult = await sendLoanInvitation({
+                lenderName: lender.username,
+                borrowerEmail,
+                borrowerName,
+                amount,
+                description,
+                invitationUrl
+            });
+
+            if (emailResult.success) {
+                notificationSent = true;
+                notificationMethod = 'email';
+                console.log('✅ Email notification sent successfully');
+            } else {
+                console.error('❌ Email notification failed:', emailResult.error);
+            }
         }
 
         return new Response(JSON.stringify({
             success: true,
             loan,
-            emailSent: emailResult.success
+            notificationSent,
+            notificationMethod
         }), { status: 201 });
 
     } catch (error: any) {

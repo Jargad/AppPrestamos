@@ -30,11 +30,29 @@
       </div>
       <input type="hidden" id="selected-contact-email" name="contactEmail" />
       <input type="hidden" id="selected-contact-name" name="contactName" />
+      <input type="hidden" id="selected-contact-phone" name="contactPhone" />
       <p
         style="font-size: 0.85rem; color: var(--text-tertiary); margin-top: 0.5rem;"
       >
         Escribe para buscar un conocido existente o crear uno nuevo
       </p>
+    </div>
+
+    <div class="input-group">
+      <label for="borrower-phone">WhatsApp del Prestatario (Opcional)</label>
+      <input
+        type="tel"
+        id="borrower-phone"
+        name="borrowerPhone"
+        placeholder="+57 300 123 4567"
+        pattern="\+[1-9]\d{1,14}"
+        title="Formato internacional: +57 300 123 4567"
+      />
+      <small
+        style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem; display: block;"
+      >
+        📱 Para enviar notificación por WhatsApp
+      </small>
     </div>
 
     <div class="input-group">
@@ -85,6 +103,12 @@
   ) as HTMLInputElement;
   const selectedContactName = document.getElementById(
     "selected-contact-name",
+  ) as HTMLInputElement;
+  const selectedContactPhone = document.getElementById(
+    "selected-contact-phone",
+  ) as HTMLInputElement;
+  const borrowerPhoneInput = document.getElementById(
+    "borrower-phone",
   ) as HTMLInputElement;
 
   let contacts: any[] = [];
@@ -165,12 +189,16 @@
   }
 
   // Select a contact
-  function selectContact(email: string, name: string) {
+  function selectContact(email: string, name: string, phone?: string) {
     const contact = contacts.find((c) => c.email === email);
     if (contact) {
       selectedContact = contact;
       selectedContactEmail.value = email;
       selectedContactName.value = name;
+      selectedContactPhone.value = phone || contact.phone || "";
+      if (phone || contact.phone) {
+        borrowerPhoneInput.value = phone || contact.phone || "";
+      }
       contactSearch.value = `${name} (${email})`;
       if (contactSuggestions) contactSuggestions.style.display = "none";
     }
@@ -205,6 +233,8 @@
     const formData = new FormData(form);
     const amount = parseFloat(formData.get("amount") as string);
     const description = formData.get("description") as string;
+    const borrowerPhone =
+      borrowerPhoneInput.value.trim() || selectedContactPhone.value.trim();
 
     let borrowerEmail = selectedContactEmail.value;
     let borrowerName = selectedContactName.value;
@@ -244,6 +274,7 @@
         body: JSON.stringify({
           borrowerName,
           borrowerEmail,
+          borrowerPhone: borrowerPhone || undefined,
           amount,
           description,
         }),
@@ -261,15 +292,20 @@
           messageDiv.style.padding = "0.75rem";
           messageDiv.style.borderRadius = "8px";
 
-          if (data.emailSent) {
+          const notificationIcon =
+            data.notificationMethod === "whatsapp" ? "📱" : "📧";
+          const notificationText =
+            data.notificationMethod === "whatsapp" ? "WhatsApp" : "Email";
+
+          if (data.notificationSent) {
             messageDiv.innerHTML = `
               <strong>✅ Préstamo creado exitosamente</strong><br/>
-              <small>📧 Email de invitación enviado a ${borrowerEmail}</small>
+              <small>${notificationIcon} Notificación enviada por ${notificationText} a ${borrowerEmail}</small>
             `;
           } else {
             messageDiv.innerHTML = `
               <strong>✅ Préstamo creado</strong><br/>
-              <small>⚠️ No se pudo enviar el email. Comparte el enlace manualmente.</small>
+              <small>⚠️ No se pudo enviar la notificación. Comparte el enlace manualmente.</small>
             `;
           }
         }

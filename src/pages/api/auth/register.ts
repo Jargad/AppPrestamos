@@ -15,13 +15,21 @@ function hashPassword(password: string): string {
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
         const body = await request.json();
-        const { username, email, password } = body;
+        const { username, email, password, phone } = body;
 
         // Validate input
         if (!username || !email || !password) {
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Todos los campos son requeridos'
+            }), { status: 400 });
+        }
+
+        // Validate phone format if provided (optional)
+        if (phone && !phone.match(/^\+[1-9]\d{1,14}$/)) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Formato de teléfono inválido. Use formato internacional: +573001234567'
             }), { status: 400 });
         }
 
@@ -45,7 +53,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         // Create user
         const userId = crypto.randomUUID();
         const hashedPassword = hashPassword(password);
-        const user = createUser(userId, username, email, hashedPassword);
+        const user = createUser(userId, username, email, hashedPassword, phone);
 
         // Create session
         cookies.set('session', JSON.stringify({
