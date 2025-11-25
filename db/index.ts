@@ -1,14 +1,24 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, mkdirSync } from 'fs';
+import { join, dirname as pathDirname } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Database path - uses environment variable for Railway, falls back to local path
+const dbPath = process.env.DB_PATH || join(__dirname, 'loans.db');
+
+// Ensure directory exists (for Railway volume)
+const dbDir = pathDirname(dbPath);
+try {
+    mkdirSync(dbDir, { recursive: true });
+} catch (err) {
+    // Directory might already exist, ignore error
+}
+
 // Initialize database
-const dbPath = join(__dirname, 'loans.db');
 const db = new Database(dbPath);
 
 // Enable foreign keys
