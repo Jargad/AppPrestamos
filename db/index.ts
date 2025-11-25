@@ -1,8 +1,9 @@
 import Database from 'better-sqlite3';
-import { readFileSync, mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync } from 'fs';
 import { join, dirname as pathDirname } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { schema } from './schema.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,18 +41,6 @@ console.log('✅ Database connection opened');
 db.pragma('foreign_keys = ON');
 
 // Initialize schema
-const schemaPath = join(__dirname, 'schema.sql');
-console.log('📄 Schema path:', schemaPath);
-
-if (!existsSync(schemaPath)) {
-    console.error('❌ Schema file not found at:', schemaPath);
-    throw new Error(`Schema file not found: ${schemaPath}`);
-}
-
-console.log('📖 Reading schema file...');
-const schema = readFileSync(schemaPath, 'utf-8');
-console.log('✅ Schema file read successfully');
-
 console.log('🔧 Executing schema...');
 db.exec(schema);
 console.log('✅ Schema executed successfully');
