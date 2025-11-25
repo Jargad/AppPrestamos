@@ -1,0 +1,366 @@
+---
+// ContactsManager component - Updated for SSR with API
+---
+
+<div class="card">
+    <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;"
+    >
+        <h2
+            style="margin: 0; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+        >
+            👥 Mis Conocidos
+        </h2>
+        <button id="add-contact-btn" class="btn btn-primary">
+            ➕ Agregar Conocido
+        </button>
+    </div>
+
+    <div id="contacts-list" class="contacts-grid"></div>
+    <div
+        id="contacts-empty-state"
+        style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+    >
+        <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
+            📭 No tienes conocidos guardados
+        </p>
+        <p>Agrega contactos para gestionar tus préstamos fácilmente</p>
+    </div>
+</div>
+
+<!-- Contact Modal -->
+<div id="contact-modal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modal-title">➕ Agregar Conocido</h2>
+            <button class="close-btn" id="close-contact-modal">×</button>
+        </div>
+        <form id="contact-form">
+            <input type="hidden" id="contact-mode" value="create" />
+            <input type="hidden" id="original-email" />
+
+            <div class="input-group">
+                <label for="contact-email">Email *</label>
+                <input
+                    type="email"
+                    id="contact-email"
+                    name="email"
+                    required
+                    placeholder="ejemplo@email.com"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="contact-name">Nombre *</label>
+                <input
+                    type="text"
+                    id="contact-name"
+                    name="name"
+                    required
+                    placeholder="Ej: Juan Pérez"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="contact-phone">Teléfono (opcional)</label>
+                <input
+                    type="tel"
+                    id="contact-phone"
+                    name="phone"
+                    placeholder="+57 300 123 4567"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="contact-notes">Notas (opcional)</label>
+                <textarea
+                    id="contact-notes"
+                    name="notes"
+                    placeholder="Información adicional..."></textarea>
+            </div>
+
+            <div id="contact-error" style="display: none; margin-bottom: 1rem;">
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="cancel-contact"
+                    style="flex: 1;"
+                >
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    💾 Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const contactsList = document.getElementById("contacts-list");
+    const emptyState = document.getElementById("contacts-empty-state");
+    const addContactBtn = document.getElementById("add-contact-btn");
+    const contactModal = document.getElementById("contact-modal");
+    const contactForm = document.getElementById(
+        "contact-form",
+    ) as HTMLFormElement;
+    const closeModalBtn = document.getElementById("close-contact-modal");
+    const cancelBtn = document.getElementById("cancel-contact");
+    const modalTitle = document.getElementById("modal-title");
+    const contactMode = document.getElementById(
+        "contact-mode",
+    ) as HTMLInputElement;
+    const originalEmail = document.getElementById(
+        "original-email",
+    ) as HTMLInputElement;
+    const contactError = document.getElementById("contact-error");
+
+    // Load contacts from API
+    async function loadContacts() {
+        try {
+            const response = await fetch("/api/contacts");
+            const data = await response.json();
+
+            if (data.success) {
+                renderContacts(data.contacts || []);
+            }
+        } catch (error) {
+            console.error("Error loading contacts:", error);
+        }
+    }
+
+    // Render contacts
+    function renderContacts(contacts: any[]) {
+        if (!contactsList || !emptyState) return;
+
+        if (contacts.length === 0) {
+            contactsList.style.display = "none";
+            emptyState.style.display = "block";
+        } else {
+            contactsList.style.display = "grid";
+            emptyState.style.display = "none";
+
+            contactsList.innerHTML = contacts
+                .map(
+                    (contact) => `
+        <div class="contact-card card" style="animation: slideUp 0.3s ease;">
+          <div style="margin-bottom: 1rem;">
+            <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${contact.name}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0;">
+              📧 ${contact.email}
+            </p>
+            ${
+                contact.phone
+                    ? `
+              <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0;">
+                📱 ${contact.phone}
+              </p>
+            `
+                    : ""
+            }
+            ${
+                contact.notes
+                    ? `
+              <p style="color: var(--text-tertiary); font-size: 0.85rem; margin-top: 0.5rem; font-style: italic;">
+                ${contact.notes}
+              </p>
+            `
+                    : ""
+            }
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary edit-contact-btn" data-email="${contact.email}" style="flex: 1;">
+              ✏️ Editar
+            </button>
+            <button class="btn btn-danger delete-contact-btn" data-email="${contact.email}" style="flex: 1;">
+              🗑️ Eliminar
+            </button>
+          </div>
+        </div>
+      `,
+                )
+                .join("");
+
+            // Attach event listeners
+            document.querySelectorAll(".edit-contact-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const email = (btn as HTMLElement).dataset.email;
+                    const contact = contacts.find((c) => c.email === email);
+                    if (contact) openEditModal(contact);
+                });
+            });
+
+            document.querySelectorAll(".delete-contact-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const email = (btn as HTMLElement).dataset.email;
+                    if (email) deleteContact(email);
+                });
+            });
+        }
+    }
+
+    // Open add modal
+    function openAddModal() {
+        if (!contactModal || !modalTitle || !contactMode) return;
+
+        contactMode.value = "create";
+        if (modalTitle) modalTitle.textContent = "➕ Agregar Conocido";
+        contactForm?.reset();
+
+        const emailInput = document.getElementById(
+            "contact-email",
+        ) as HTMLInputElement;
+        if (emailInput) emailInput.disabled = false;
+
+        contactModal.style.display = "flex";
+    }
+
+    // Open edit modal
+    function openEditModal(contact: any) {
+        if (!contactModal || !modalTitle || !contactMode || !originalEmail)
+            return;
+
+        contactMode.value = "edit";
+        originalEmail.value = contact.email;
+        if (modalTitle) modalTitle.textContent = "✏️ Editar Conocido";
+
+        (document.getElementById("contact-email") as HTMLInputElement).value =
+            contact.email;
+        (document.getElementById("contact-name") as HTMLInputElement).value =
+            contact.name;
+        (document.getElementById("contact-phone") as HTMLInputElement).value =
+            contact.phone || "";
+        (
+            document.getElementById("contact-notes") as HTMLTextAreaElement
+        ).value = contact.notes || "";
+
+        const emailInput = document.getElementById(
+            "contact-email",
+        ) as HTMLInputElement;
+        if (emailInput) emailInput.disabled = true; // Can't change email (primary key)
+
+        contactModal.style.display = "flex";
+    }
+
+    // Close modal
+    function closeModal() {
+        if (contactModal) contactModal.style.display = "none";
+        contactForm?.reset();
+        if (contactError) contactError.style.display = "none";
+    }
+
+    // Save contact
+    async function saveContact(e: Event) {
+        e.preventDefault();
+
+        const formData = new FormData(contactForm);
+        const email = formData.get("email") as string;
+        const name = formData.get("name") as string;
+        const phone = formData.get("phone") as string;
+        const notes = formData.get("notes") as string;
+
+        const mode = contactMode?.value;
+
+        try {
+            const url = "/api/contacts";
+            const method = mode === "edit" ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, name, phone, notes }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                closeModal();
+                loadContacts();
+                window.dispatchEvent(new CustomEvent("contacts-updated"));
+            } else {
+                if (contactError) {
+                    contactError.textContent =
+                        data.error || "Error al guardar contacto";
+                    contactError.style.display = "block";
+                    contactError.style.background = "rgba(239, 68, 68, 0.1)";
+                    contactError.style.border =
+                        "1px solid rgba(239, 68, 68, 0.3)";
+                    contactError.style.color = "#ef4444";
+                    contactError.style.padding = "0.75rem";
+                    contactError.style.borderRadius = "8px";
+                }
+            }
+        } catch (error) {
+            if (contactError) {
+                contactError.textContent = "Error de conexión";
+                contactError.style.display = "block";
+            }
+        }
+    }
+
+    // Delete contact
+    async function deleteContact(email: string) {
+        if (!confirm("¿Estás seguro de que deseas eliminar este contacto?"))
+            return;
+
+        try {
+            const response = await fetch("/api/contacts", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                loadContacts();
+                window.dispatchEvent(new CustomEvent("contacts-updated"));
+            } else {
+                alert(data.error || "Error al eliminar contacto");
+            }
+        } catch (error) {
+            alert("Error de conexión");
+        }
+    }
+
+    // Event listeners
+    addContactBtn?.addEventListener("click", openAddModal);
+    closeModalBtn?.addEventListener("click", closeModal);
+    cancelBtn?.addEventListener("click", closeModal);
+    contactForm?.addEventListener("submit", saveContact);
+
+    // Listen for contacts updates
+    window.addEventListener("contacts-updated", loadContacts);
+    window.addEventListener("loan-created", loadContacts);
+
+    // Initial load
+    loadContacts();
+</script>
+
+<style>
+    .contacts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .contacts-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

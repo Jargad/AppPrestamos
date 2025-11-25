@@ -1,0 +1,268 @@
+---
+import { getLoanByToken } from "../../../db/index";
+
+const { token } = Astro.params;
+
+if (!token) {
+    return Astro.redirect("/auth");
+}
+
+const loan = getLoanByToken(token);
+
+if (!loan) {
+    return Astro.redirect("/");
+}
+
+// Check if user is already logged in
+const sessionCookie = Astro.cookies.get("session");
+let session = null;
+if (sessionCookie) {
+    try {
+        session = JSON.parse(sessionCookie.value);
+    } catch {}
+}
+
+// Format currency
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        minimumFractionDigits: 0,
+    }).format(amount);
+};
+---
+
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <title>Invitación de Préstamo - Gestor de Préstamos</title>
+        <link rel="stylesheet" href="/src/styles/global.css" />
+    </head>
+    <body>
+        <div class="auth-container">
+            <div class="auth-card card">
+                <header style="text-align: center; margin-bottom: 2rem;">
+                    <h1
+                        style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+                    >
+                        💸 Invitación de Préstamo
+                    </h1>
+                </header>
+
+                <div class="invitation-content">
+                    <div
+                        class="loan-details"
+                        style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(96, 165, 250, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;"
+                    >
+                        <h2 style="margin: 0 0 1rem 0; font-size: 1.5rem;">
+                            Detalles del Préstamo
+                        </h2>
+
+                        <div style="margin: 1.5rem 0;">
+                            <p
+                                style="color: var(--text-secondary); margin-bottom: 0.5rem;"
+                            >
+                                Monto:
+                            </p>
+                            <p
+                                style="font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0;"
+                            >
+                                {formatCurrency(loan.amount)}
+                            </p>
+                        </div>
+
+                        <div style="margin: 1.5rem 0;">
+                            <p
+                                style="color: var(--text-secondary); margin-bottom: 0.5rem;"
+                            >
+                                Descripción:
+                            </p>
+                            <p
+                                style="font-size: 1.1rem; color: var(--text-primary);"
+                            >
+                                {loan.description}
+                            </p>
+                        </div>
+
+                        <div style="margin: 1.5rem 0;">
+                            <p
+                                style="color: var(--text-secondary); margin-bottom: 0.5rem;"
+                            >
+                                Para:
+                            </p>
+                            <p
+                                style="font-size: 1.1rem; color: var(--text-primary);"
+                            >
+                                {loan.borrower_name}
+                            </p>
+                            <p
+                                style="font-size: 0.9rem; color: var(--text-secondary);"
+                            >
+                                📧 {loan.borrower_email}
+                            </p>
+                        </div>
+                    </div>
+
+                    {
+                        session ? (
+                            <div id="logged-in-actions">
+                                {session.email.toLowerCase() ===
+                                loan.borrower_email.toLowerCase() ? (
+                                    <div>
+                                        <p style="text-align: center; margin-bottom: 1.5rem; color: var(--text-secondary);">
+                                            ¿Deseas aceptar este préstamo?
+                                        </p>
+                                        <div style="display: flex; gap: 1rem;">
+                                            <button
+                                                id="reject-btn"
+                                                class="btn btn-danger"
+                                                style="flex: 1;"
+                                            >
+                                                ❌ Rechazar
+                                            </button>
+                                            <button
+                                                id="accept-btn"
+                                                class="btn btn-success"
+                                                style="flex: 1;"
+                                            >
+                                                ✅ Aceptar
+                                            </button>
+                                        </div>
+                                        <div
+                                            id="message"
+                                            style="margin-top: 1rem; text-align: center; display: none;"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div style="text-align: center; padding: 2rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+                                        <p style="color: #ef4444;">
+                                            Esta invitación es para{" "}
+                                            {loan.borrower_email}. Has iniciado
+                                            sesión como {session.email}.
+                                        </p>
+                                        <p style="margin-top: 1rem; color: var(--text-secondary);">
+                                            Por favor, cierra sesión e inicia
+                                            sesión con la cuenta correcta.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style="text-align: center;">
+                                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
+                                    Para aceptar o rechazar este préstamo,
+                                    necesitas iniciar sesión o registrarte.
+                                </p>
+                                <a
+                                    href={`/auth?email=${encodeURIComponent(loan.borrower_email)}&redirect=/invitation/${token}`}
+                                    class="btn btn-primary"
+                                    style="display: inline-block; text-decoration: none;"
+                                >
+                                    🚀 Iniciar Sesión / Registrarse
+                                </a>
+                            </div>
+                        )
+                    }
+                </div>
+            </div>
+        </div>
+
+        <script define:vars={{ loanId: loan.id, token }}>
+            const acceptBtn = document.getElementById("accept-btn");
+            const rejectBtn = document.getElementById("reject-btn");
+            const messageDiv = document.getElementById("message");
+
+            async function handleAction(action) {
+                try {
+                    const response = await fetch(
+                        `/api/loans/${loanId}/${action}`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                        },
+                    );
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (messageDiv) {
+                            messageDiv.style.display = "block";
+                            messageDiv.style.background =
+                                "rgba(34, 197, 94, 0.1)";
+                            messageDiv.style.border =
+                                "1px solid rgba(34, 197, 94, 0.3)";
+                            messageDiv.style.color = "#22c55e";
+                            messageDiv.style.padding = "1rem";
+                            messageDiv.style.borderRadius = "8px";
+                            messageDiv.textContent =
+                                action === "accept"
+                                    ? "✅ Préstamo aceptado exitosamente"
+                                    : "❌ Préstamo rechazado";
+                        }
+
+                        // Redirect to home after 2 seconds
+                        setTimeout(() => {
+                            window.location.href = "/";
+                        }, 2000);
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (error) {
+                    if (messageDiv) {
+                        messageDiv.style.display = "block";
+                        messageDiv.style.background = "rgba(239, 68, 68, 0.1)";
+                        messageDiv.style.border =
+                            "1px solid rgba(239, 68, 68, 0.3)";
+                        messageDiv.style.color = "#ef4444";
+                        messageDiv.style.padding = "1rem";
+                        messageDiv.style.borderRadius = "8px";
+                        messageDiv.textContent =
+                            error.message || "Error al procesar la solicitud";
+                    }
+                }
+            }
+
+            acceptBtn?.addEventListener("click", () => handleAction("accept"));
+            rejectBtn?.addEventListener("click", () => handleAction("reject"));
+        </script>
+
+        <style>
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: linear-gradient(
+                    135deg,
+                    hsl(260, 85%, 15%),
+                    hsl(200, 90%, 20%)
+                );
+                padding: 1rem;
+            }
+
+            .auth-container {
+                width: 100%;
+                max-width: 600px;
+            }
+
+            .auth-card {
+                padding: 2.5rem;
+                animation: slideUp 0.4s ease;
+            }
+
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        </style>
+    </body>
+</html>

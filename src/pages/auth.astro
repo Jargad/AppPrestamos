@@ -1,0 +1,185 @@
+---
+import LoginForm from "../components/LoginForm.astro";
+import RegisterForm from "../components/RegisterForm.astro";
+import "../styles/global.css";
+
+// Check if already authenticated
+const sessionCookie = Astro.cookies.get("session");
+if (sessionCookie) {
+    // Already logged in, redirect to home or specified redirect
+    const url = new URL(Astro.request.url);
+    const redirect = url.searchParams.get("redirect");
+    return Astro.redirect(redirect || "/");
+}
+---
+
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <meta
+            name="description"
+            content="Inicia sesión o regístrate en el Gestor de Préstamos"
+        />
+        <title>Autenticación - Gestor de Préstamos</title>
+    </head>
+    <body>
+        <div class="auth-container">
+            <div class="auth-card card">
+                <header style="text-align: center; margin-bottom: 2rem;">
+                    <h1
+                        style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+                    >
+                        💸 Gestor de Préstamos
+                    </h1>
+                    <p style="color: var(--text-secondary);">
+                        Administra tus préstamos de forma profesional
+                    </p>
+                </header>
+
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="login">
+                        Iniciar Sesión
+                    </button>
+                    <button class="tab-btn" data-tab="register">
+                        Registrarse
+                    </button>
+                </div>
+
+                <div class="tab-content">
+                    <div id="login-tab" class="tab-pane active">
+                        <LoginForm />
+                    </div>
+                    <div id="register-tab" class="tab-pane">
+                        <RegisterForm />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Tab switching
+            const tabBtns = document.querySelectorAll(".tab-btn");
+            const tabPanes = document.querySelectorAll(".tab-pane");
+
+            tabBtns.forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const tab = (btn as HTMLElement).dataset.tab;
+
+                    // Update active states
+                    tabBtns.forEach((b) => b.classList.remove("active"));
+                    tabPanes.forEach((p) => p.classList.remove("active"));
+
+                    btn.classList.add("active");
+                    document
+                        .getElementById(`${tab}-tab`)
+                        ?.classList.add("active");
+                });
+            });
+        </script>
+
+        <style>
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: linear-gradient(
+                    135deg,
+                    hsl(260, 85%, 15%),
+                    hsl(200, 90%, 20%)
+                );
+                padding: 1rem;
+            }
+
+            .auth-container {
+                width: 100%;
+                max-width: 500px;
+            }
+
+            .auth-card {
+                padding: 2.5rem;
+                animation: slideUp 0.4s ease;
+            }
+
+            .tabs {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 2rem;
+                border-bottom: 2px solid var(--border-color);
+            }
+
+            .tab-btn {
+                flex: 1;
+                padding: 0.75rem 1rem;
+                background: transparent;
+                border: none;
+                color: var(--text-secondary);
+                font-size: 1rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border-bottom: 2px solid transparent;
+                margin-bottom: -2px;
+            }
+
+            .tab-btn:hover {
+                color: var(--text-primary);
+            }
+
+            .tab-btn.active {
+                color: var(--color-primary);
+                border-bottom-color: var(--color-primary);
+            }
+
+            .tab-content {
+                min-height: 400px;
+            }
+
+            .tab-pane {
+                display: none;
+                animation: fadeIn 0.3s ease;
+            }
+
+            .tab-pane.active {
+                display: block;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @media (max-width: 600px) {
+                .auth-card {
+                    padding: 1.5rem;
+                }
+
+                .tab-btn {
+                    font-size: 0.9rem;
+                    padding: 0.6rem 0.75rem;
+                }
+            }
+        </style>
+    </body>
+</html>

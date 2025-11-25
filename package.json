@@ -9,6 +9,11 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^5.16.0"
+    "@astrojs/node": "^9.5.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "astro": "^5.16.0",
+    "better-sqlite3": "^12.4.6",
+    "cloudinary": "^2.8.0",
+    "resend": "^6.5.2"
   }
 }

@@ -1,0 +1,338 @@
+---
+interface Props {
+    loanId: string;
+    isLender: boolean;
+}
+
+const { loanId, isLender } = Astro.props;
+---
+
+<div class="payment-history-container card">
+    <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">
+        📊 Historial de Pagos
+    </h3>
+
+    <div id="balance-info" style="margin-bottom: 1.5rem;"></div>
+
+    <div id="payments-list"></div>
+
+    <div
+        id="no-payments"
+        style="text-align: center; padding: 2rem; color: var(--text-tertiary); display: none;"
+    >
+        <p>📭 No hay pagos registrados aún</p>
+    </div>
+</div>
+
+<!-- Modal for viewing evidence -->
+<div id="evidence-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <img id="modal-evidence-image" src="" alt="Evidencia" />
+    </div>
+</div>
+
+<script define:vars={{ loanId, isLender }}>
+    async function loadPayments() {
+        try {
+            const response = await fetch(`/api/loans/${loanId}/payments`);
+            const data = await response.json();
+
+            if (data.success) {
+                renderBalance(data.balance);
+                renderPayments(data.payments);
+            }
+        } catch (error) {
+            console.error("Error loading payments:", error);
+        }
+    }
+
+    function renderBalance(balance) {
+        const balanceDiv = document.getElementById("balance-info");
+        if (!balanceDiv) return;
+
+        const percentage = (balance.paid / balance.total) * 100;
+
+        balanceDiv.innerHTML = `
+            <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Total</p>
+                        <p style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">${formatCurrency(balance.total)}</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Pagado</p>
+                        <p style="font-size: 1.25rem; font-weight: 700; color: #22c55e;">${formatCurrency(balance.paid)}</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Pendiente</p>
+                        <p style="font-size: 1.25rem; font-weight: 700; color: #f59e0b;">${formatCurrency(balance.pending)}</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Saldo</p>
+                        <p style="font-size: 1.25rem; font-weight: 700; color: var(--color-primary);">${formatCurrency(balance.balance)}</p>
+                    </div>
+                </div>
+                
+                <div style="background: var(--bg-primary); border-radius: 999px; height: 12px; overflow: hidden;">
+                    <div style="background: linear-gradient(135deg, #22c55e, #10b981); height: 100%; width: ${percentage}%; transition: width 0.3s;"></div>
+                </div>
+                <p style="text-align: center; margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                    ${percentage.toFixed(1)}% Pagado
+                </p>
+            </div>
+        `;
+    }
+
+    function renderPayments(payments) {
+        const listDiv = document.getElementById("payments-list");
+        const noPaymentsDiv = document.getElementById("no-payments");
+
+        if (!listDiv || !noPaymentsDiv) return;
+
+        if (payments.length === 0) {
+            listDiv.style.display = "none";
+            noPaymentsDiv.style.display = "block";
+            return;
+        }
+
+        listDiv.style.display = "block";
+        noPaymentsDiv.style.display = "none";
+
+        listDiv.innerHTML = payments
+            .map((payment) => {
+                const statusBadge = {
+                    pending: {
+                        text: "⏳ Pendiente",
+                        class: "badge-pending",
+                    },
+                    confirmed: {
+                        text: "✅ Confirmado",
+                        class: "badge-accepted",
+                    },
+                    rejected: {
+                        text: "❌ Rechazado",
+                        class: "badge-rejected",
+                    },
+                };
+
+                const status = statusBadge[payment.status];
+
+                let actions = "";
+                if (isLender && payment.status === "pending") {
+                    actions = `
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                            <button class="btn btn-success confirm-payment-btn" data-id="${payment.id}" style="flex: 1;">
+                                ✅ Confirmar
+                            </button>
+                            <button class="btn btn-danger reject-payment-btn" data-id="${payment.id}" style="flex: 1;">
+                                ❌ Rechazar
+                            </button>
+                        </div>
+                    `;
+                }
+
+                let rejectionInfo = "";
+                if (payment.status === "rejected" && payment.rejection_reason) {
+                    rejectionInfo = `
+                        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.75rem; border-radius: 6px; margin-top: 0.75rem;">
+                            <p style="font-size: 0.85rem; color: #ef4444; margin: 0;"><strong>Razón de rechazo:</strong> ${payment.rejection_reason}</p>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="payment-card" style="background: var(--bg-secondary); padding: 1.25rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                            <div>
+                                <p style="font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0;">
+                                    ${formatCurrency(payment.amount)}
+                                </p>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0.25rem 0 0 0;">
+                                    ${payment.payment_type === "full" ? "Pago Completo" : "Abono Parcial"} • ${formatDate(payment.created_at)}
+                                </p>
+                            </div>
+                            <span class="badge ${status.class}">${status.text}</span>
+                        </div>
+                        
+                        ${payment.notes ? `<p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.75rem 0;">${payment.notes}</p>` : ""}
+                        
+                        <button class="btn btn-secondary view-evidence-btn" data-url="${payment.evidence_url}" style="width: 100%; margin-top: 0.75rem;">
+                            🖼️ Ver Evidencia
+                        </button>
+                        
+                        ${rejectionInfo}
+                        ${actions}
+                    </div>
+                `;
+            })
+            .join("");
+
+        // Attach event listeners
+        attachEventListeners();
+    }
+
+    function attachEventListeners() {
+        // View evidence
+        document.querySelectorAll(".view-evidence-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const url = btn.dataset.url;
+                showEvidence(url);
+            });
+        });
+
+        // Confirm payment
+        document.querySelectorAll(".confirm-payment-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const paymentId = btn.dataset.id;
+                if (confirm("¿Confirmar este pago?")) {
+                    await confirmPayment(paymentId);
+                }
+            });
+        });
+
+        // Reject payment
+        document.querySelectorAll(".reject-payment-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const paymentId = btn.dataset.id;
+                const reason = prompt("Ingresa la razón del rechazo:");
+                if (reason) {
+                    await rejectPayment(paymentId, reason);
+                }
+            });
+        });
+    }
+
+    function showEvidence(url) {
+        const modal = document.getElementById("evidence-modal");
+        const image = document.getElementById("modal-evidence-image");
+        if (modal && image) {
+            image.src = url;
+            modal.style.display = "flex";
+        }
+    }
+
+    async function confirmPayment(paymentId) {
+        try {
+            const response = await fetch(
+                `/api/loans/${loanId}/payments/${paymentId}/confirm`,
+                {
+                    method: "POST",
+                },
+            );
+            const data = await response.json();
+
+            if (data.success) {
+                alert("✅ Pago confirmado exitosamente");
+                loadPayments();
+                // Trigger reload of parent page
+                window.dispatchEvent(new Event("payment-confirmed"));
+            } else {
+                alert(data.error || "Error al confirmar pago");
+            }
+        } catch (error) {
+            alert("Error de conexión");
+        }
+    }
+
+    async function rejectPayment(paymentId, reason) {
+        try {
+            const response = await fetch(
+                `/api/loans/${loanId}/payments/${paymentId}/reject`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ reason }),
+                },
+            );
+            const data = await response.json();
+
+            if (data.success) {
+                alert("❌ Pago rechazado");
+                loadPayments();
+            } else {
+                alert(data.error || "Error al rechazar pago");
+            }
+        } catch (error) {
+            alert("Error de conexión");
+        }
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat("es-CO", {
+            style: "currency",
+            currency: "COP",
+            minimumFractionDigits: 0,
+        }).format(amount);
+    }
+
+    function formatDate(dateString) {
+        return new Intl.DateTimeFormat("es-CO", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        }).format(new Date(dateString));
+    }
+
+    // Close modal
+    document.querySelector(".close-modal")?.addEventListener("click", () => {
+        document.getElementById("evidence-modal").style.display = "none";
+    });
+
+    window.addEventListener("click", (e) => {
+        const modal = document.getElementById("evidence-modal");
+        if (e.target === modal) {
+            modal.style.display = "none";
+        }
+    });
+
+    // Initial load
+    loadPayments();
+</script>
+
+<style>
+    .payment-history-container {
+        background: var(--bg-primary);
+    }
+
+    .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 90%;
+    }
+
+    .modal-content img {
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: 8px;
+    }
+
+    .close-modal {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        color: white;
+        font-size: 35px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close-modal:hover {
+        color: #ccc;
+    }
+</style>

@@ -1,0 +1,158 @@
+---
+import type { Loan } from '../utils/loans';
+
+interface Props {
+  loan: Loan;
+}
+
+const { loan } = Astro.props;
+---
+
+<div class="loan-card card" data-loan-id={loan.id}>
+  <div class="loan-header">
+    <div>
+      <h3 class="loan-borrower">{loan.borrowerName}</h3>
+      <p class="loan-date">{new Date(loan.createdAt).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    </div>
+    <span class={`badge badge-${loan.status}`}>
+      {loan.status === 'pending' ? '⏳ Pendiente' : 
+       loan.status === 'accepted' ? '✅ Aceptado' : 
+       loan.status === 'rejected' ? '❌ Rechazado' : 
+       loan.status === 'returned' ? '💵 Devuelto' : 
+       '✏️ Edición Pendiente'}
+    </span>
+  </div>
+  
+  <div class="loan-body">
+    <div class="loan-amount">
+      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(loan.amount)}
+    </div>
+    <p class="loan-description">{loan.description}</p>
+    
+    {loan.originalLoan && (
+      <div class="edit-info">
+        <p style="color: var(--text-tertiary); font-size: 0.85rem; margin-top: 0.5rem;">
+          📝 Cambios propuestos desde: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(loan.originalLoan.amount)}
+        </p>
+      </div>
+    )}
+    
+    {loan.evidence && (
+      <div class="evidence-preview" style="margin-top: 1rem;">
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">📎 Evidencia:</p>
+        <img src={loan.evidence} alt="Evidencia de devolución" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);" />
+      </div>
+    )}
+  </div>
+  
+  <div class="loan-actions">
+    {loan.status === 'pending' && (
+      <>
+        <button class="btn btn-success accept-btn" data-id={loan.id}>
+          ✅ Aceptar
+        </button>
+        <button class="btn btn-danger reject-btn" data-id={loan.id}>
+          ❌ Rechazar
+        </button>
+      </>
+    )}
+    
+    {loan.status === 'accepted' && (
+      <>
+        <button class="btn btn-secondary edit-btn" data-id={loan.id}>
+          ✏️ Editar
+        </button>
+        <button class="btn btn-primary return-btn" data-id={loan.id}>
+          💵 Marcar Devuelto
+        </button>
+      </>
+    )}
+    
+    {loan.status === 'edit-pending' && (
+      <>
+        <button class="btn btn-success accept-edit-btn" data-id={loan.id}>
+          ✅ Aceptar Cambios
+        </button>
+        <button class="btn btn-danger reject-edit-btn" data-id={loan.id}>
+          ❌ Rechazar Cambios
+        </button>
+      </>
+    )}
+    
+    {(loan.status === 'rejected' || loan.status === 'returned') && (
+      <button class="btn btn-danger delete-btn" data-id={loan.id}>
+        🗑️ Eliminar
+      </button>
+    )}
+  </div>
+</div>
+
+<style>
+  .loan-card {
+    animation: slideUp 0.3s ease;
+  }
+  
+  .loan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 1rem;
+  }
+  
+  .loan-borrower {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+  }
+  
+  .loan-date {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+  }
+  
+  .loan-body {
+    margin-bottom: 1.5rem;
+  }
+  
+  .loan-amount {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+  
+  .loan-description {
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  
+  .loan-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  
+  .loan-actions button {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .edit-info {
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-top: 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    .loan-actions button {
+      flex: 1 1 100%;
+    }
+  }
+</style>

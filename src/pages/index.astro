@@ -1,16 +1,633 @@
 ---
+import LoanForm from "../components/LoanForm.astro";
+import ContactsManager from "../components/ContactsManager.astro";
+import "../styles/global.css";
 
+// Check authentication
+const sessionCookie = Astro.cookies.get("session");
+if (!sessionCookie) {
+	return Astro.redirect("/auth");
+}
+
+let session;
+try {
+	session = JSON.parse(sessionCookie.value);
+} catch {
+	return Astro.redirect("/auth");
+}
 ---
 
-<html lang="en">
+<!doctype html>
+<html lang="es">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<meta
+			name="description"
+			content="Gestiona tus préstamos de forma sencilla y organizada"
+		/>
+		<title>Gestor de Préstamos - Administra tus préstamos fácilmente</title>
 	</head>
 	<body>
-		<h1>Astro</h1>
+		<div class="container">
+			<header
+				style="text-align: center; margin-bottom: 3rem; position: relative;"
+			>
+				<div
+					style="position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: 1rem;"
+				>
+					<span
+						id="user-info"
+						style="color: var(--text-secondary); font-size: 0.9rem;"
+						>👤 {session.username}</span
+					>
+					<button
+						id="logout-btn"
+						class="btn btn-secondary"
+						style="padding: 0.5rem 1rem; font-size: 0.9rem;"
+					>
+						🚪 Cerrar Sesión
+					</button>
+				</div>
+				<h1
+					style="font-size: 3rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+				>
+					💸 Gestor de Préstamos
+				</h1>
+				<p style="color: var(--text-secondary); font-size: 1.1rem;">
+					Administra y da seguimiento a tus préstamos de forma
+					profesional
+				</p>
+			</header>
+
+			<div class="grid grid-2" style="margin-bottom: 3rem;">
+				<LoanForm />
+
+				<div
+					class="card"
+					style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(96, 165, 250, 0.1)); border-color: rgba(139, 92, 246, 0.3);"
+				>
+					<h3 style="margin-bottom: 1rem; font-size: 1.25rem;">
+						📊 Estadísticas
+					</h3>
+					<div id="stats" style="display: grid; gap: 1rem;">
+						<div
+							style="display: flex; justify-content: space-between; align-items: center;"
+						>
+							<span style="color: var(--text-secondary);"
+								>Préstamos Dados:</span
+							>
+							<strong id="lent-count" style="font-size: 1.5rem;"
+								>0</strong
+							>
+						</div>
+						<div
+							style="display: flex; justify-content: space-between; align-items: center;"
+						>
+							<span style="color: var(--text-secondary);"
+								>Préstamos Recibidos:</span
+							>
+							<strong
+								id="borrowed-count"
+								style="font-size: 1.5rem;">0</strong
+							>
+						</div>
+						<div
+							style="display: flex; justify-content: space-between; align-items: center;"
+						>
+							<span style="color: var(--text-secondary);"
+								>Pendientes de Aceptar:</span
+							>
+							<strong
+								id="pending-count"
+								style="font-size: 1.5rem; color: var(--color-warning);"
+								>0</strong
+							>
+						</div>
+						<div
+							style="display: flex; justify-content: space-between; align-items: center;"
+						>
+							<span style="color: var(--text-secondary);"
+								>Total Prestado:</span
+							>
+							<strong
+								id="total-lent"
+								style="font-size: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+								>$0</strong
+							>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Contacts Section with Grid -->
+			<div style="margin-bottom: 3rem;">
+				<ContactsManager />
+			</div>
+
+			<!-- Two Column Layout for Loans -->
+			<div class="grid grid-2" style="gap: 2rem; align-items: start;">
+				<!-- Left Column: Loans I've Given (as Lender) -->
+				<div>
+					<h2
+						style="font-size: 1.75rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+					>
+						💰 Préstamos que he Dado
+					</h2>
+					<div id="lender-loans-list" class="loans-grid"></div>
+					<div
+						id="lender-empty-state"
+						style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+					>
+						<p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
+							📭 No has dado préstamos aún
+						</p>
+						<p>
+							Crea tu primer préstamo usando el formulario de
+							arriba
+						</p>
+					</div>
+				</div>
+
+				<!-- Right Column: Loans I Owe (as Borrower) + Pending Invitations -->
+				<div>
+					<h2
+						style="font-size: 1.75rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+					>
+						💳 Préstamos que Debo
+					</h2>
+
+					<!-- Pending Invitations (shown first if any) -->
+					<div id="pending-section" style="margin-bottom: 2rem;">
+						<div id="pending-loans-list" class="loans-grid"></div>
+						<div id="pending-empty-state" style="display: none;">
+						</div>
+					</div>
+
+					<!-- Accepted Borrower Loans -->
+					<div id="borrower-loans-list" class="loans-grid"></div>
+					<div
+						id="borrower-empty-state"
+						style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+					>
+						<p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
+							📭 No tienes préstamos pendientes
+						</p>
+						<p>
+							Cuando alguien te envíe un préstamo, aparecerá aquí
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			// Format currency
+			function formatCurrency(amount: number): string {
+				return new Intl.NumberFormat("es-CO", {
+					style: "currency",
+					currency: "COP",
+					minimumFractionDigits: 0,
+				}).format(amount);
+			}
+
+			// Format date
+			function formatDate(dateString: string): string {
+				return new Intl.DateTimeFormat("es-CO", {
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+				}).format(new Date(dateString));
+			}
+
+			// Logout handler
+			document
+				.getElementById("logout-btn")
+				?.addEventListener("click", async () => {
+					if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+						await fetch("/api/auth/logout", { method: "POST" });
+						window.location.href = "/auth";
+					}
+				});
+
+			// Mark loan as returned
+			async function markAsReturned(loanId: string) {
+				try {
+					const response = await fetch(
+						`/api/loans/${loanId}/return`,
+						{
+							method: "POST",
+						},
+					);
+					const data = await response.json();
+					if (data.success) {
+						loadLoans();
+					} else {
+						alert(data.error || "Error al marcar como devuelto");
+					}
+				} catch (error) {
+					alert("Error de conexión");
+				}
+			}
+
+			// Delete loan
+			async function deleteLoan(loanId: string) {
+				try {
+					const response = await fetch(`/api/loans/${loanId}`, {
+						method: "DELETE",
+					});
+					const data = await response.json();
+					if (data.success) {
+						loadLoans();
+					} else {
+						alert(data.error || "Error al eliminar préstamo");
+					}
+				} catch (error) {
+					alert("Error de conexión");
+				}
+			}
+
+			// Load loans from API
+			async function loadLoans() {
+				try {
+					const response = await fetch("/api/loans");
+					const data = await response.json();
+
+					if (data.success) {
+						updateStats(
+							data.loansAsLender || [],
+							data.loansAsBorrower || [],
+							data.pendingLoans || [],
+						);
+						renderLenderLoans(data.loansAsLender || []);
+						renderBorrowerLoans(data.loansAsBorrower || []);
+						renderPendingLoans(data.pendingLoans || []);
+					}
+				} catch (error) {
+					console.error("Error loading loans:", error);
+				}
+			}
+
+			// Render lender loans
+			function renderLenderLoans(loans: any[]) {
+				const list = document.getElementById("lender-loans-list");
+				const emptyState =
+					document.getElementById("lender-empty-state");
+
+				if (!list || !emptyState) return;
+
+				if (loans.length === 0) {
+					list.style.display = "none";
+					emptyState.style.display = "block";
+				} else {
+					list.style.display = "grid";
+					emptyState.style.display = "none";
+
+					list.innerHTML = loans
+						.map((loan) => {
+							const statusText: Record<string, string> = {
+								pending: "⏳ Pendiente de Aceptación",
+								accepted: "✅ Aceptado",
+								rejected: "❌ Rechazado",
+								returned: "💵 Devuelto",
+							};
+
+							// Determine available actions based on status
+							let actions = "";
+							if (loan.status === "accepted") {
+								actions = `
+							<div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+								<a href="/loans/${loan.id}" class="btn btn-primary" style="flex: 1; text-decoration: none; text-align: center;">
+									📊 Ver Detalles y Pagos
+								</a>
+							</div>
+						`;
+							} else if (
+								loan.status === "pending" ||
+								loan.status === "rejected"
+							) {
+								actions = `
+							<div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+								<button class="btn btn-danger delete-loan-btn" data-id="${loan.id}" style="flex: 1;">
+									🗑️ Eliminar
+								</button>
+							</div>
+						`;
+							} else if (loan.status === "returned") {
+								actions = `
+							<div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+								<a href="/loans/${loan.id}" class="btn btn-primary" style="flex: 1; text-decoration: none; text-align: center;">
+									📊 Ver Detalles y Pagos
+								</a>
+							</div>
+						`;
+							}
+
+							// Add pending payments indicator
+							let pendingPaymentsBadge = "";
+							if (
+								loan.pendingPaymentsCount &&
+								loan.pendingPaymentsCount > 0
+							) {
+								pendingPaymentsBadge = `
+							<div style="background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; padding: 0.5rem 1rem; border-radius: 8px; margin-top: 1rem; font-weight: 600; text-align: center; animation: pulse 2s infinite;">
+								🔔 ${loan.pendingPaymentsCount} pago${loan.pendingPaymentsCount > 1 ? "s" : ""} pendiente${loan.pendingPaymentsCount > 1 ? "s" : ""} de confirmar
+							</div>
+						`;
+							}
+
+							return `
+						<div class="loan-card card ${loan.pendingPaymentsCount > 0 ? "loan-with-pending-payments" : ""}">
+							<div class="loan-header">
+								<div>
+									<h3 class="loan-borrower">Préstamo a ${loan.borrower_name}</h3>
+									<p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0;">
+										📧 ${loan.borrower_email}
+									</p>
+									<p class="loan-date">${formatDate(loan.created_at)}</p>
+								</div>
+								<span class="badge badge-${loan.status}">${statusText[loan.status] || loan.status}</span>
+							</div>
+							<div class="loan-body">
+								<div class="loan-amount">${formatCurrency(loan.amount)}</div>
+								<p class="loan-description">${loan.description}</p>
+								${pendingPaymentsBadge}
+								${actions}
+							</div>
+						</div>
+					`;
+						})
+						.join("");
+
+					// Attach event listeners for actions
+					document
+						.querySelectorAll(".mark-returned-btn")
+						.forEach((btn) => {
+							btn.addEventListener("click", async () => {
+								const loanId = (btn as HTMLElement).dataset.id;
+								if (
+									loanId &&
+									confirm(
+										"¿Marcar este préstamo como devuelto?",
+									)
+								) {
+									await markAsReturned(loanId);
+								}
+							});
+						});
+
+					document
+						.querySelectorAll(".delete-loan-btn")
+						.forEach((btn) => {
+							btn.addEventListener("click", async () => {
+								const loanId = (btn as HTMLElement).dataset.id;
+								if (
+									loanId &&
+									confirm(
+										"¿Estás seguro de eliminar este préstamo?",
+									)
+								) {
+									await deleteLoan(loanId);
+								}
+							});
+						});
+				}
+			} // Render borrower loans
+			function renderBorrowerLoans(loans: any[]) {
+				const list = document.getElementById("borrower-loans-list");
+				const emptyState = document.getElementById(
+					"borrower-empty-state",
+				);
+
+				if (!list || !emptyState) return;
+
+				if (loans.length === 0) {
+					list.style.display = "none";
+					emptyState.style.display = "block";
+				} else {
+					list.style.display = "grid";
+					emptyState.style.display = "none";
+
+					list.innerHTML = loans
+						.map((loan) => {
+							const statusText: Record<string, string> = {
+								accepted: "✅ Aceptado",
+								returned: "💵 Devuelto",
+							};
+
+							// Determine available actions based on status
+							let actions = "";
+							console.log("Loan Status:", loan.status);
+							if (loan.status === "accepted") {
+								actions = `
+									<div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+										<a href="/loans/${loan.id}" class="btn btn-primary" style="flex: 1; text-decoration: none; text-align: center;">
+											💳 Registrar Pago
+										</a>
+										<a href="/loans/${loan.id}" class="btn btn-secondary" style="flex: 1; text-decoration: none; text-align: center;">
+											📊 Ver Detalles
+										</a>
+									</div>
+								`;
+							} else if (loan.status === "returned") {
+								actions = `
+									<div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+										<a href="/loans/${loan.id}" class="btn btn-secondary" style="flex: 1; text-decoration: none; text-align: center;">
+											📊 Ver Detalles
+										</a>
+									</div>
+								`;
+							}
+
+							return `
+								<div class="loan-card card">
+									<div class="loan-header">
+										<div>
+											<h3 class="loan-borrower">Préstamo de ${loan.lender_name || "Desconocido"}</h3>
+											<p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0;">
+												📧 ${loan.lender_email || ""}
+											</p>
+											<p class="loan-date">${formatDate(loan.created_at)}</p>
+										</div>
+										<span class="badge badge-${loan.status}">${statusText[loan.status] || loan.status}</span>
+									</div>
+									<div class="loan-body">
+										<div class="loan-amount">${formatCurrency(loan.amount)}</div>
+										<p class="loan-description">${loan.description}</p>
+										${actions}
+									</div>
+								</div>
+							`;
+						})
+						.join("");
+				}
+			}
+
+			// Render pending invitations
+			function renderPendingLoans(loans: any[]) {
+				const list = document.getElementById("pending-loans-list");
+				const emptyState = document.getElementById(
+					"pending-empty-state",
+				);
+
+				if (!list || !emptyState) return;
+
+				if (loans.length === 0) {
+					list.style.display = "none";
+					emptyState.style.display = "block";
+				} else {
+					list.style.display = "grid";
+					emptyState.style.display = "none";
+
+					list.innerHTML = loans
+						.map((loan) => {
+							return `
+							<div class="loan-card card" style="border-color: var(--color-warning);">
+								<div class="loan-header">
+									<div>
+										<h3 class="loan-borrower">${loan.borrower_name}</h3>
+										<p class="loan-date">${formatDate(loan.created_at)}</p>
+									</div>
+									<span class="badge badge-pending">⏳ Pendiente</span>
+								</div>
+								<div class="loan-body">
+									<div class="loan-amount">${formatCurrency(loan.amount)}</div>
+									<p class="loan-description">${loan.description}</p>
+									<div style="margin-top: 1.5rem;">
+										<a href="/invitation/${loan.invitation_token}" class="btn btn-primary" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
+											Ver Invitación
+										</a>
+									</div>
+								</div>
+							</div>
+						`;
+						})
+						.join("");
+				}
+			}
+
+			// Update statistics
+			function updateStats(
+				lenderLoans: any[],
+				borrowerLoans: any[],
+				pendingLoans: any[],
+			) {
+				const lentCount = document.getElementById("lent-count");
+				const borrowedCount = document.getElementById("borrowed-count");
+				const pendingCount = document.getElementById("pending-count");
+				const totalLent = document.getElementById("total-lent");
+
+				if (lentCount)
+					lentCount.textContent = lenderLoans.length.toString();
+				if (borrowedCount)
+					borrowedCount.textContent = borrowerLoans.length.toString();
+				if (pendingCount)
+					pendingCount.textContent = pendingLoans.length.toString();
+
+				if (totalLent) {
+					const total = lenderLoans
+						.filter(
+							(l) =>
+								l.status === "accepted" ||
+								l.status === "pending",
+						)
+						.reduce((sum, l) => sum + l.amount, 0);
+					totalLent.textContent = formatCurrency(total);
+				}
+			}
+
+			// Listen for loan created event
+			window.addEventListener("loan-created", () => {
+				loadLoans();
+			});
+
+			// Initial load
+			loadLoans();
+		</script>
+
+		<style>
+			.loan-card {
+				animation: slideUp 0.3s ease;
+			}
+
+			.loan-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: flex-start;
+				margin-bottom: 1rem;
+				gap: 1rem;
+			}
+
+			.loan-borrower {
+				font-size: 1.25rem;
+				font-weight: 600;
+				margin-bottom: 0.25rem;
+				color: var(--text-primary);
+			}
+
+			.loan-date {
+				font-size: 0.85rem;
+				color: var(--text-tertiary);
+			}
+
+			.loan-body {
+				margin-bottom: 1.5rem;
+			}
+
+			.loan-amount {
+				font-size: 2rem;
+				font-weight: 700;
+				background: linear-gradient(
+					135deg,
+					hsl(260, 85%, 65%),
+					hsl(200, 90%, 60%)
+				);
+				-webkit-background-clip: text;
+				-webkit-text-fill-color: transparent;
+				background-clip: text;
+				margin-bottom: 0.5rem;
+			}
+
+			.loan-description {
+				color: var(--text-secondary);
+				line-height: 1.6;
+			}
+
+			.loans-grid {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: 1.5rem;
+			}
+
+			@keyframes slideUp {
+				from {
+					opacity: 0;
+					transform: translateY(10px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			@keyframes pulse {
+				0%,
+				100% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.7;
+				}
+			}
+
+			@media (max-width: 968px) {
+				.grid-2 {
+					grid-template-columns: 1fr !important;
+				}
+			}
+		</style>
 	</body>
 </html>
+```

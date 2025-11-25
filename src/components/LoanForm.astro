@@ -1,0 +1,344 @@
+---
+// LoanForm component - Updated with contact autocomplete
+---
+
+<div class="card">
+  <h2
+    style="margin-bottom: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+  >
+    💰 Nuevo Préstamo
+  </h2>
+
+  <form id="loan-form">
+    <div class="input-group">
+      <label for="contact-search">Conocido *</label>
+      <div style="position: relative;">
+        <input
+          type="text"
+          id="contact-search"
+          name="contactSearch"
+          placeholder="Buscar por nombre o email..."
+          autocomplete="off"
+          required
+        />
+        <div
+          id="contact-suggestions"
+          class="suggestions-dropdown"
+          style="display: none;"
+        >
+        </div>
+      </div>
+      <input type="hidden" id="selected-contact-email" name="contactEmail" />
+      <input type="hidden" id="selected-contact-name" name="contactName" />
+      <p
+        style="font-size: 0.85rem; color: var(--text-tertiary); margin-top: 0.5rem;"
+      >
+        Escribe para buscar un conocido existente o crear uno nuevo
+      </p>
+    </div>
+
+    <div class="input-group">
+      <label for="amount">Monto (COP) *</label>
+      <input
+        type="number"
+        id="amount"
+        name="amount"
+        required
+        step="1000"
+        min="1000"
+        placeholder="Ej: 50000"
+      />
+    </div>
+
+    <div class="input-group">
+      <label for="description">Descripción *</label>
+      <textarea
+        id="description"
+        name="description"
+        required
+        placeholder="Ej: Préstamo para emergencia médica"></textarea>
+    </div>
+
+    <div id="loan-message" style="display: none; margin-bottom: 1rem;"></div>
+
+    <button
+      type="submit"
+      class="btn btn-primary"
+      style="width: 100%;"
+      id="submit-btn"
+    >
+      ➕ Crear Préstamo
+    </button>
+  </form>
+</div>
+
+<script>
+  const form = document.getElementById("loan-form") as HTMLFormElement;
+  const messageDiv = document.getElementById("loan-message");
+  const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+  const contactSearch = document.getElementById(
+    "contact-search",
+  ) as HTMLInputElement;
+  const contactSuggestions = document.getElementById("contact-suggestions");
+  const selectedContactEmail = document.getElementById(
+    "selected-contact-email",
+  ) as HTMLInputElement;
+  const selectedContactName = document.getElementById(
+    "selected-contact-name",
+  ) as HTMLInputElement;
+
+  let contacts: any[] = [];
+  let selectedContact: any = null;
+
+  // Load contacts
+  async function loadContacts() {
+    try {
+      const response = await fetch("/api/contacts");
+      const data = await response.json();
+      if (data.success) {
+        contacts = data.contacts || [];
+      }
+    } catch (error) {
+      console.error("Error loading contacts:", error);
+    }
+  }
+
+  // Search contacts
+  function searchContacts(query: string) {
+    const lowerQuery = query.toLowerCase();
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(lowerQuery) ||
+        c.email.toLowerCase().includes(lowerQuery),
+    );
+  }
+
+  // Update suggestions
+  function updateSuggestions(query: string) {
+    if (!contactSuggestions) return;
+
+    if (query.length < 1) {
+      contactSuggestions.style.display = "none";
+      return;
+    }
+
+    const results = searchContacts(query);
+
+    if (results.length === 0) {
+      contactSuggestions.innerHTML = `
+        <div class="suggestion-item" style="padding: 0.75rem; color: var(--text-tertiary); font-style: italic;">
+          No se encontraron conocidos. Se creará uno nuevo.
+        </div>
+      `;
+      contactSuggestions.style.display = "block";
+      selectedContact = null;
+      selectedContactEmail.value = "";
+      selectedContactName.value = "";
+      return;
+    }
+
+    contactSuggestions.innerHTML = results
+      .map(
+        (contact) => `
+      <div class="suggestion-item" data-email="${contact.email}" data-name="${contact.name}">
+        <strong>${contact.name}</strong>
+        <br />
+        <small style="color: var(--text-secondary);">${contact.email}</small>
+      </div>
+    `,
+      )
+      .join("");
+
+    contactSuggestions.style.display = "block";
+
+    // Attach click handlers
+    contactSuggestions.querySelectorAll(".suggestion-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const email = (item as HTMLElement).dataset.email;
+        const name = (item as HTMLElement).dataset.name;
+
+        if (email && name) {
+          selectContact(email, name);
+        }
+      });
+    });
+  }
+
+  // Select a contact
+  function selectContact(email: string, name: string) {
+    const contact = contacts.find((c) => c.email === email);
+    if (contact) {
+      selectedContact = contact;
+      selectedContactEmail.value = email;
+      selectedContactName.value = name;
+      contactSearch.value = `${name} (${email})`;
+      if (contactSuggestions) contactSuggestions.style.display = "none";
+    }
+  }
+
+  // Contact search input
+  contactSearch?.addEventListener("input", (e) => {
+    const query = (e.target as HTMLInputElement).value;
+    updateSuggestions(query);
+  });
+
+  // Hide suggestions when clicking outside
+  document.addEventListener("click", (e) => {
+    if (
+      contactSuggestions &&
+      !contactSearch?.contains(e.target as Node) &&
+      !contactSuggestions.contains(e.target as Node)
+    ) {
+      contactSuggestions.style.display = "none";
+    }
+  });
+
+  // Update contacts list when contacts are updated
+  window.addEventListener("contacts-updated", () => {
+    loadContacts();
+  });
+
+  // Form submission
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    const amount = parseFloat(formData.get("amount") as string);
+    const description = formData.get("description") as string;
+
+    let borrowerEmail = selectedContactEmail.value;
+    let borrowerName = selectedContactName.value;
+
+    // If no contact selected, parse from search field
+    if (!borrowerEmail) {
+      const searchValue = contactSearch.value.trim();
+
+      // Check if it's an email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(searchValue)) {
+        borrowerEmail = searchValue;
+        borrowerName = searchValue.split("@")[0]; // Use email prefix as name
+      } else {
+        if (messageDiv) {
+          messageDiv.style.display = "block";
+          messageDiv.style.background = "rgba(239, 68, 68, 0.1)";
+          messageDiv.style.border = "1px solid rgba(239, 68, 68, 0.3)";
+          messageDiv.style.color = "#ef4444";
+          messageDiv.style.padding = "0.75rem";
+          messageDiv.style.borderRadius = "8px";
+          messageDiv.textContent =
+            "Por favor selecciona un conocido o ingresa un email válido";
+        }
+        return;
+      }
+    }
+
+    // Disable submit button
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Creando préstamo...";
+
+    try {
+      const response = await fetch("/api/loans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          borrowerName,
+          borrowerEmail,
+          amount,
+          description,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Show success message
+        if (messageDiv) {
+          messageDiv.style.display = "block";
+          messageDiv.style.background = "rgba(34, 197, 94, 0.1)";
+          messageDiv.style.border = "1px solid rgba(34, 197, 94, 0.3)";
+          messageDiv.style.color = "#22c55e";
+          messageDiv.style.padding = "0.75rem";
+          messageDiv.style.borderRadius = "8px";
+
+          if (data.emailSent) {
+            messageDiv.innerHTML = `
+              <strong>✅ Préstamo creado exitosamente</strong><br/>
+              <small>📧 Email de invitación enviado a ${borrowerEmail}</small>
+            `;
+          } else {
+            messageDiv.innerHTML = `
+              <strong>✅ Préstamo creado</strong><br/>
+              <small>⚠️ No se pudo enviar el email. Comparte el enlace manualmente.</small>
+            `;
+          }
+        }
+
+        // Reset form
+        form.reset();
+        selectedContact = null;
+        selectedContactEmail.value = "";
+        selectedContactName.value = "";
+
+        // Dispatch events
+        window.dispatchEvent(new CustomEvent("loan-created"));
+        window.dispatchEvent(new CustomEvent("contacts-updated"));
+
+        // Hide message after 5 seconds
+        setTimeout(() => {
+          if (messageDiv) messageDiv.style.display = "none";
+        }, 5000);
+      } else {
+        throw new Error(data.error || "Error al crear préstamo");
+      }
+    } catch (error: any) {
+      if (messageDiv) {
+        messageDiv.style.display = "block";
+        messageDiv.style.background = "rgba(239, 68, 68, 0.1)";
+        messageDiv.style.border = "1px solid rgba(239, 68, 68, 0.3)";
+        messageDiv.style.color = "#ef4444";
+        messageDiv.style.padding = "0.75rem";
+        messageDiv.style.borderRadius = "8px";
+        messageDiv.textContent = error.message || "Error al crear préstamo";
+      }
+    } finally {
+      // Re-enable submit button
+      submitBtn.disabled = false;
+      submitBtn.textContent = "➕ Crear Préstamo";
+    }
+  });
+
+  // Initial load
+  loadContacts();
+</script>
+
+<style>
+  .suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 0.25rem;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .suggestion-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .suggestion-item:hover {
+    background: var(--bg-primary);
+  }
+
+  .suggestion-item:not(:last-child) {
+    border-bottom: 1px solid var(--border-color);
+  }
+</style>

@@ -1,0 +1,99 @@
+---
+// Login Form Component - Updated for SSR
+---
+
+<div class="auth-form">
+    <h2
+        style="margin-bottom: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+    >
+        🔐 Iniciar Sesión
+    </h2>
+
+    <form id="login-form">
+        <div class="input-group">
+            <label for="login-email">Email</label>
+            <input
+                type="email"
+                id="login-email"
+                name="email"
+                required
+                placeholder="tu@email.com"
+            />
+        </div>
+
+        <div class="input-group">
+            <label for="login-password">Contraseña</label>
+            <input
+                type="password"
+                id="login-password"
+                name="password"
+                required
+                placeholder="••••••••"
+            />
+        </div>
+
+        <div id="login-error" class="error-message" style="display: none;">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+            🚀 Entrar
+        </button>
+    </form>
+</div>
+
+<script>
+    const form = document.getElementById("login-form") as HTMLFormElement;
+    const errorDiv = document.getElementById("login-error");
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const email = formData.get("email") as string;
+        const password = formData.get("password") as string;
+
+        try {
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Check if there's a redirect parameter
+                const urlParams = new URLSearchParams(window.location.search);
+                const redirect = urlParams.get("redirect");
+                window.location.href = redirect || "/";
+            } else {
+                if (errorDiv) {
+                    errorDiv.textContent =
+                        data.error || "Error al iniciar sesión";
+                    errorDiv.style.display = "block";
+                }
+            }
+        } catch (error) {
+            if (errorDiv) {
+                errorDiv.textContent = "Error de conexión. Intenta nuevamente.";
+                errorDiv.style.display = "block";
+            }
+        }
+    });
+</script>
+
+<style>
+    .auth-form {
+        width: 100%;
+    }
+
+    .error-message {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+</style>
