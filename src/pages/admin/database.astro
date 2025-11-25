@@ -1,0 +1,221 @@
+---
+// ⚠️ SOLO PARA DESARROLLO/DEBUGGING
+// Protege esta página en producción
+
+const sessionCookie = Astro.cookies.get("session");
+if (!sessionCookie) {
+    return Astro.redirect("/auth");
+}
+
+let session;
+try {
+    session = JSON.parse(sessionCookie.value);
+} catch {
+    return Astro.redirect("/auth");
+}
+
+if (session.email !== "johnnyvargasdiaz@gmail.com") {
+    return Astro.redirect("/");
+}
+---
+
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width" />
+        <title>Admin - Database Query</title>
+        <link rel="stylesheet" href="/src/styles/global.css" />
+    </head>
+    <body>
+        <div
+            class="container"
+            style="max-width: 1200px; margin: 2rem auto; padding: 2rem;"
+        >
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;"
+            >
+                <h1>🔧 Database Admin</h1>
+                <a href="/" class="btn btn-secondary">← Volver</a>
+            </div>
+
+            <div
+                class="card"
+                style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); margin-bottom: 2rem;"
+            >
+                <p style="color: #ef4444; margin: 0;">
+                    ⚠️ <strong>ADVERTENCIA</strong>: Esta página permite
+                    ejecutar consultas SQL directamente en la base de datos.
+                    Úsala con precaución. Los cambios son permanentes.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Ejecutar Query SQL</h3>
+                <textarea
+                    id="query-input"
+                    placeholder="SELECT * FROM users;"
+                    style="width: 100%; min-height: 150px; font-family: monospace; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary);"
+                ></textarea>
+
+                <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                    <button id="execute-btn" class="btn btn-primary"
+                        >▶️ Ejecutar</button
+                    >
+                    <button id="clear-btn" class="btn btn-secondary"
+                        >🗑️ Limpiar</button
+                    >
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <h4>Ejemplos rápidos:</h4>
+                    <div style="display: grid; gap: 0.5rem;">
+                        <button
+                            class="example-btn btn btn-secondary"
+                            data-query="SELECT * FROM users;"
+                            >Ver todos los usuarios</button
+                        >
+                        <button
+                            class="example-btn btn btn-secondary"
+                            data-query="SELECT * FROM loans ORDER BY created_at DESC LIMIT 10;"
+                            >Ver últimos 10 préstamos</button
+                        >
+                        <button
+                            class="example-btn btn btn-secondary"
+                            data-query="SELECT * FROM payments WHERE status = 'pending';"
+                            >Ver pagos pendientes</button
+                        >
+                        <button
+                            class="example-btn btn btn-secondary"
+                            data-query="SELECT * FROM contacts;"
+                            >Ver todos los contactos</button
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div id="result-container" style="display: none; margin-top: 2rem;">
+                <div class="card">
+                    <h3>Resultado</h3>
+                    <div id="result-content" style="overflow-x: auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const queryInput = document.getElementById("query-input");
+            const executeBtn = document.getElementById("execute-btn");
+            const clearBtn = document.getElementById("clear-btn");
+            const resultContainer = document.getElementById("result-container");
+            const resultContent = document.getElementById("result-content");
+            const exampleBtns = document.querySelectorAll(".example-btn");
+
+            executeBtn?.addEventListener("click", async () => {
+                const query = queryInput.value.trim();
+                if (!query) {
+                    alert("Por favor ingresa una query");
+                    return;
+                }
+
+                executeBtn.disabled = true;
+                executeBtn.textContent = "⏳ Ejecutando...";
+
+                try {
+                    const response = await fetch("/api/admin/query", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ query }),
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        displayResult(data.result);
+                    } else {
+                        displayError(data.error);
+                    }
+                } catch (error) {
+                    displayError(error.message);
+                } finally {
+                    executeBtn.disabled = false;
+                    executeBtn.textContent = "▶️ Ejecutar";
+                }
+            });
+
+            clearBtn?.addEventListener("click", () => {
+                queryInput.value = "";
+                resultContainer.style.display = "none";
+            });
+
+            exampleBtns.forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    queryInput.value = btn.dataset.query;
+                });
+            });
+
+            function displayResult(result) {
+                resultContainer.style.display = "block";
+
+                if (Array.isArray(result)) {
+                    if (result.length === 0) {
+                        resultContent.innerHTML =
+                            '<p style="color: var(--text-secondary);">No se encontraron resultados.</p>';
+                    } else {
+                        const table = createTable(result);
+                        resultContent.innerHTML = table;
+                    }
+                } else {
+                    resultContent.innerHTML = `
+                    <div style="padding: 1rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px;">
+                        <p style="color: #22c55e; margin: 0;">
+                            ✅ Query ejecutado exitosamente<br>
+                            Filas afectadas: ${result.changes || 0}
+                        </p>
+                    </div>
+                `;
+                }
+            }
+
+            function displayError(error) {
+                resultContainer.style.display = "block";
+                resultContent.innerHTML = `
+                <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+                    <p style="color: #ef4444; margin: 0;">
+                        ❌ Error: ${error}
+                    </p>
+                </div>
+            `;
+            }
+
+            function createTable(data) {
+                const keys = Object.keys(data[0]);
+                let html =
+                    '<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">';
+
+                // Header
+                html += "<thead><tr>";
+                keys.forEach((key) => {
+                    html += `<th style="text-align: left; padding: 0.75rem; border-bottom: 2px solid var(--border-color); background: var(--bg-secondary);">${key}</th>`;
+                });
+                html += "</tr></thead>";
+
+                // Body
+                html += "<tbody>";
+                data.forEach((row, i) => {
+                    html += `<tr style="border-bottom: 1px solid var(--border-color); ${i % 2 === 0 ? "background: var(--bg-secondary);" : ""}">`;
+                    keys.forEach((key) => {
+                        const value =
+                            row[key] === null
+                                ? '<em style="color: var(--text-tertiary);">null</em>'
+                                : row[key];
+                        html += `<td style="padding: 0.75rem;">${value}</td>`;
+                    });
+                    html += "</tr>";
+                });
+                html += "</tbody></table>";
+
+                return html;
+            }
+        </script>
+    </body>
+</html>
