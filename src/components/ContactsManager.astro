@@ -4,27 +4,43 @@
 
 <div class="card">
     <div
-        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; cursor: pointer;"
+        id="contacts-header"
     >
         <h2
-            style="margin: 0; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+            style="margin: 0; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: flex; align-items: center; gap: 0.5rem;"
         >
             👥 Mis Conocidos
+            <span
+                id="toggle-icon"
+                style="transition: transform 0.3s ease; font-size: 0.7em; opacity: 0.7;"
+                >▼</span
+            >
         </h2>
-        <button id="add-contact-btn" class="btn btn-primary">
+        <button
+            id="add-contact-btn"
+            class="btn btn-primary"
+            style="z-index: 1;"
+        >
             ➕ Agregar Conocido
         </button>
     </div>
 
-    <div id="contacts-list" class="contacts-grid"></div>
     <div
-        id="contacts-empty-state"
-        style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+        id="contacts-content"
+        class="contacts-content"
+        style="max-height: 1000px; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: 1;"
     >
-        <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
-            📭 No tienes conocidos guardados
-        </p>
-        <p>Agrega contactos para gestionar tus préstamos fácilmente</p>
+        <div id="contacts-list" class="contacts-grid"></div>
+        <div
+            id="contacts-empty-state"
+            style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+        >
+            <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
+                📭 No tienes conocidos guardados
+            </p>
+            <p>Agrega contactos para gestionar tus préstamos fácilmente</p>
+        </div>
     </div>
 </div>
 
@@ -117,6 +133,45 @@
         "original-email",
     ) as HTMLInputElement;
     const contactError = document.getElementById("contact-error");
+
+    // Toggle contacts visibility
+    const contactsContent = document.getElementById("contacts-content");
+    const toggleIcon = document.getElementById("toggle-icon");
+    const contactsHeader = document.getElementById("contacts-header");
+
+    let isContactsVisible = localStorage.getItem("contactsVisible") !== "false";
+
+    // Set initial state
+    function setContactsVisibility(visible: boolean) {
+        if (!contactsContent || !toggleIcon || !contactsHeader) return;
+
+        if (visible) {
+            contactsContent.style.maxHeight = "1000px";
+            contactsContent.style.opacity = "1";
+            toggleIcon.style.transform = "rotate(0deg)";
+            contactsHeader.style.marginBottom = "1.5rem";
+        } else {
+            contactsContent.style.maxHeight = "0";
+            contactsContent.style.opacity = "0";
+            toggleIcon.style.transform = "rotate(-90deg)";
+            contactsHeader.style.marginBottom = "0";
+        }
+
+        localStorage.setItem("contactsVisible", visible.toString());
+    }
+
+    // Initialize visibility
+    setContactsVisibility(isContactsVisible);
+
+    // Toggle on header click
+    contactsHeader?.addEventListener("click", (e) => {
+        // Don't toggle if clicking the add button
+        if ((e.target as HTMLElement).closest("#add-contact-btn")) {
+            return;
+        }
+        isContactsVisible = !isContactsVisible;
+        setContactsVisibility(isContactsVisible);
+    });
 
     // Load contacts from API
     async function loadContacts() {
@@ -345,6 +400,21 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 1.5rem;
+        margin-top: 15px;
+    }
+
+    .contacts-content {
+        transition:
+            max-height 0.3s ease,
+            opacity 0.3s ease;
+    }
+
+    #contacts-header {
+        user-select: none;
+    }
+
+    #contacts-header:hover {
+        opacity: 0.9;
     }
 
     @keyframes slideUp {
