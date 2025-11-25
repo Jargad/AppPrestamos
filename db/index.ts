@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { readFileSync, mkdirSync } from 'fs';
+import { readFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname as pathDirname } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -10,24 +10,51 @@ const __dirname = dirname(__filename);
 // Database path - uses environment variable for Railway, falls back to local path
 const dbPath = process.env.DB_PATH || join(__dirname, 'loans.db');
 
+console.log('🔍 Initializing database...');
+console.log('📁 Database path:', dbPath);
+console.log('📂 Current directory:', __dirname);
+
 // Ensure directory exists (for Railway volume)
 const dbDir = pathDirname(dbPath);
+console.log('📂 Database directory:', dbDir);
+
 try {
-    mkdirSync(dbDir, { recursive: true });
+    if (!existsSync(dbDir)) {
+        console.log('📁 Creating database directory...');
+        mkdirSync(dbDir, { recursive: true });
+        console.log('✅ Database directory created');
+    } else {
+        console.log('✅ Database directory already exists');
+    }
 } catch (err) {
-    // Directory might already exist, ignore error
+    console.error('❌ Error creating database directory:', err);
+    throw err;
 }
 
 // Initialize database
+console.log('🗄️ Opening database connection...');
 const db = new Database(dbPath);
+console.log('✅ Database connection opened');
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
 
 // Initialize schema
 const schemaPath = join(__dirname, 'schema.sql');
+console.log('📄 Schema path:', schemaPath);
+
+if (!existsSync(schemaPath)) {
+    console.error('❌ Schema file not found at:', schemaPath);
+    throw new Error(`Schema file not found: ${schemaPath}`);
+}
+
+console.log('📖 Reading schema file...');
 const schema = readFileSync(schemaPath, 'utf-8');
+console.log('✅ Schema file read successfully');
+
+console.log('🔧 Executing schema...');
 db.exec(schema);
+console.log('✅ Schema executed successfully');
 
 console.log('✅ Database initialized at:', dbPath);
 
