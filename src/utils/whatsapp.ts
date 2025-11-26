@@ -23,9 +23,18 @@ export async function sendWhatsAppNotification({ to, message }: WhatsAppNotifica
     }
 
     try {
+        // Normalizar el número: quitar el prefijo whatsapp: si ya existe
+        let normalizedTo = to.replace('whatsapp:', '').trim();
+
+        // Asegurar que el número tenga el formato +[código país][número]
+        if (!normalizedTo.startsWith('+')) {
+            console.error('❌ Número de teléfono inválido. Debe empezar con +:', normalizedTo);
+            return { success: false, error: 'Formato de número inválido. Debe empezar con +' };
+        }
+
         const result = await twilioClient.messages.create({
             from: twilioWhatsAppNumber,
-            to: `whatsapp:${to}`,
+            to: `whatsapp:${normalizedTo}`,
             body: message
         });
 
