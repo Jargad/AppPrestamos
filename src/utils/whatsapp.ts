@@ -1,14 +1,14 @@
-import { Twilio } from 'twilio';
+import twilio from 'twilio';
 
 const accountSid = import.meta.env.TWILIO_ACCOUNT_SID;
 const authToken = import.meta.env.TWILIO_AUTH_TOKEN;
 const twilioWhatsAppNumber = import.meta.env.TWILIO_WHATSAPP_NUMBER; // ej: whatsapp:+14155238886
 
-let twilioClient: Twilio | null = null;
+let twilioClient: ReturnType<typeof twilio> | null = null;
 
 // Inicializar cliente de Twilio solo si las credenciales están configuradas
 if (accountSid && authToken) {
-    twilioClient = new Twilio(accountSid, authToken);
+    twilioClient = twilio(accountSid, authToken);
 }
 
 interface WhatsAppNotification {
