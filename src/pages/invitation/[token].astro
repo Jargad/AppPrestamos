@@ -1,5 +1,6 @@
 ---
 import { getLoanByToken } from "../../../db/index";
+import "../../styles/global.css";
 
 const { token } = Astro.params;
 
@@ -39,7 +40,6 @@ const formatCurrency = (amount: number) => {
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <meta name="viewport" content="width=device-width" />
         <title>Invitación de Préstamo - Gestor de Préstamos</title>
-        <link rel="stylesheet" href="/src/styles/global.css" />
     </head>
     <body>
         <div class="auth-container">

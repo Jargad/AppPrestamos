@@ -28,38 +28,29 @@ try {
 			name="description"
 			content="Gestiona tus préstamos de forma sencilla y organizada"
 		/>
-		<title>Gestor de Préstamos - Administra tus préstamos fácilmente</title>
+		<title>Gestor de Préstamos</title>
 	</head>
 	<body>
 		<div class="container">
-			<header
-				style="text-align: center; margin-bottom: 3rem; position: relative;"
-			>
-				<div
-					style="position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: 1rem;"
-				>
-					<span
-						id="user-info"
-						style="color: var(--text-secondary); font-size: 0.9rem;"
-						>👤 {session.username}</span
-					>
+			<header class="main-header">
+				<div class="header-user-section">
+					<span id="user-info" class="user-info">
+						👤 {session.username}
+					</span>
 					<button
 						id="logout-btn"
-						class="btn btn-secondary"
-						style="padding: 0.5rem 1rem; font-size: 0.9rem;"
+						class="btn btn-secondary logout-btn"
 					>
 						🚪 Cerrar Sesión
 					</button>
 				</div>
-				<h1
-					style="font-size: 3rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
-				>
-					💸 Gestor de Préstamos
-				</h1>
-				<p style="color: var(--text-secondary); font-size: 1.1rem;">
-					Administra y da seguimiento a tus préstamos de forma
-					profesional
-				</p>
+				<div class="header-content">
+					<h1 class="header-title">💸 Gestor de Préstamos</h1>
+					<p class="header-subtitle">
+						Administra y da seguimiento a tus préstamos de forma
+						profesional
+					</p>
+				</div>
 			</header>
 
 			<div class="grid grid-2" style="margin-bottom: 3rem;">
@@ -77,7 +68,7 @@ try {
 							style="display: flex; justify-content: space-between; align-items: center;"
 						>
 							<span style="color: var(--text-secondary);"
-								>Préstamos Dados:</span
+								>Préstamos Activos Dados:</span
 							>
 							<strong id="lent-count" style="font-size: 1.5rem;"
 								>0</strong
@@ -87,7 +78,7 @@ try {
 							style="display: flex; justify-content: space-between; align-items: center;"
 						>
 							<span style="color: var(--text-secondary);"
-								>Préstamos Recibidos:</span
+								>Préstamos Activos Recibidos:</span
 							>
 							<strong
 								id="borrowed-count"
@@ -117,6 +108,33 @@ try {
 								style="font-size: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
 								>$0</strong
 							>
+						</div>
+						<div
+							style="display: flex; justify-content: space-between; align-items: center;"
+						>
+							<span style="color: var(--text-secondary);"
+								>Total Debido:</span
+							>
+							<strong
+								id="total-owed"
+								style="font-size: 1.5rem; background: linear-gradient(135deg, hsl(355, 75%, 60%), hsl(40, 95%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+								>$0</strong
+							>
+						</div>
+					</div>
+
+					<!-- Chart Section -->
+					<div style="margin-top: 2rem;">
+						<h4
+							style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary);"
+						>
+							💰 Préstamos por Contacto
+						</h4>
+						<div
+							id="contact-chart"
+							style="display: grid; gap: 0.75rem;"
+						>
+							<!-- Chart bars will be inserted here -->
 						</div>
 					</div>
 				</div>
@@ -518,24 +536,196 @@ try {
 				const borrowedCount = document.getElementById("borrowed-count");
 				const pendingCount = document.getElementById("pending-count");
 				const totalLent = document.getElementById("total-lent");
+				const totalOwed = document.getElementById("total-owed");
+
+				// Filter only active loans (accepted and pending)
+				const activeLenderLoans = lenderLoans.filter(
+					(l) => l.status === "accepted" || l.status === "pending",
+				);
+				const activeBorrowerLoans = borrowerLoans.filter(
+					(l) => l.status === "accepted",
+				);
 
 				if (lentCount)
-					lentCount.textContent = lenderLoans.length.toString();
+					lentCount.textContent = activeLenderLoans.length.toString();
 				if (borrowedCount)
-					borrowedCount.textContent = borrowerLoans.length.toString();
+					borrowedCount.textContent =
+						activeBorrowerLoans.length.toString();
 				if (pendingCount)
 					pendingCount.textContent = pendingLoans.length.toString();
 
 				if (totalLent) {
-					const total = lenderLoans
-						.filter(
-							(l) =>
-								l.status === "accepted" ||
-								l.status === "pending",
-						)
-						.reduce((sum, l) => sum + l.amount, 0);
+					const total = activeLenderLoans.reduce(
+						(sum, l) => sum + l.amount,
+						0,
+					);
 					totalLent.textContent = formatCurrency(total);
 				}
+
+				if (totalOwed) {
+					const total = activeBorrowerLoans.reduce(
+						(sum, l) => sum + l.amount,
+						0,
+					);
+					totalOwed.textContent = formatCurrency(total);
+				}
+
+				// Update contact chart
+				updateContactChart(activeLenderLoans);
+			}
+
+			// Update contact chart
+			function updateContactChart(loans: any[]) {
+				const chartContainer = document.getElementById("contact-chart");
+				if (!chartContainer) return;
+
+				// Group loans by contact
+				const contactMap = new Map<
+					string,
+					{ name: string; total: number }
+				>();
+
+				loans.forEach((loan) => {
+					const key = loan.borrower_email;
+					if (contactMap.has(key)) {
+						contactMap.get(key)!.total += loan.amount;
+					} else {
+						contactMap.set(key, {
+							name: loan.borrower_name,
+							total: loan.amount,
+						});
+					}
+				});
+
+				// Convert to array and sort by total descending
+				const contacts = Array.from(contactMap.values()).sort(
+					(a, b) => b.total - a.total,
+				);
+
+				if (contacts.length === 0) {
+					chartContainer.innerHTML = `
+					<p style="text-align: center; color: var(--text-tertiary); padding: 1rem;">
+						No hay préstamos activos para mostrar
+					</p>
+				`;
+					return;
+				}
+
+				// Calculate total and percentages
+				const total = contacts.reduce((sum, c) => sum + c.total, 0);
+
+				// Define colors
+				const colors = [
+					"hsl(260, 85%, 65%)",
+					"hsl(200, 90%, 60%)",
+					"hsl(145, 65%, 55%)",
+					"hsl(40, 95%, 60%)",
+					"hsl(355, 75%, 60%)",
+					"hsl(280, 75%, 65%)",
+					"hsl(170, 80%, 55%)",
+				];
+
+				// Create donut chart
+				const size = 200;
+				const strokeWidth = 30;
+				const radius = (size - strokeWidth) / 2;
+				const circumference = 2 * Math.PI * radius;
+
+				let currentAngle = 0;
+				const segments = contacts.map((contact, index) => {
+					const percentage = (contact.total / total) * 100;
+					const angle = (percentage / 100) * 360;
+					const color = colors[index % colors.length];
+
+					const segment = {
+						contact,
+						percentage,
+						angle,
+						startAngle: currentAngle,
+						color,
+					};
+
+					currentAngle += angle;
+					return segment;
+				});
+
+				// Generate SVG donut chart
+				const svgSegments = segments
+					.map((seg) => {
+						const startAngle =
+							(seg.startAngle - 90) * (Math.PI / 180);
+						const endAngle =
+							(seg.startAngle + seg.angle - 90) * (Math.PI / 180);
+
+						const x1 = size / 2 + radius * Math.cos(startAngle);
+						const y1 = size / 2 + radius * Math.sin(startAngle);
+						const x2 = size / 2 + radius * Math.cos(endAngle);
+						const y2 = size / 2 + radius * Math.sin(endAngle);
+
+						const largeArc = seg.angle > 180 ? 1 : 0;
+
+						const pathData = [
+							`M ${x1} ${y1}`,
+							`A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
+						].join(" ");
+
+						return `
+					<path
+						d="${pathData}"
+						fill="none"
+						stroke="${seg.color}"
+						stroke-width="${strokeWidth}"
+						stroke-linecap="round"
+						class="chart-segment"
+						style="cursor: pointer; transition: opacity 0.3s ease;"
+						onmouseover="this.style.opacity='0.7'"
+						onmouseout="this.style.opacity='1'"
+					/>
+				`;
+					})
+					.join("");
+
+				// Generate legend
+				const legend = segments
+					.map((seg, index) => {
+						return `
+					<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 8px; transition: background 0.2s ease;" 
+						onmouseover="this.style.background='var(--bg-hover)'" 
+						onmouseout="this.style.background='transparent'">
+						<div style="width: 16px; height: 16px; border-radius: 4px; background: ${seg.color}; flex-shrink: 0;"></div>
+						<div style="flex: 1; min-width: 0;">
+							<div style="font-size: 0.9rem; color: var(--text-primary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+								${seg.contact.name}
+							</div>
+							<div style="font-size: 0.85rem; color: var(--text-secondary);">
+								${formatCurrency(seg.contact.total)} (${seg.percentage.toFixed(1)}%)
+							</div>
+						</div>
+					</div>
+				`;
+					})
+					.join("");
+
+				chartContainer.innerHTML = `
+				<div style="display: grid; gap: 1.5rem; grid-template-columns: auto 1fr; align-items: center;">
+					<div style="position: relative; width: ${size}px; height: ${size}px;">
+						<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform: rotate(0deg);">
+							${svgSegments}
+						</svg>
+						<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+							<div style="font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+								${formatCurrency(total)}
+							</div>
+							<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+								Total
+							</div>
+						</div>
+					</div>
+					<div style="display: grid; gap: 0.5rem; max-height: ${size}px; overflow-y: auto; padding-right: 0.5rem;">
+						${legend}
+					</div>
+				</div>
+			`;
 			}
 
 			// Listen for loan created event
@@ -548,6 +738,53 @@ try {
 		</script>
 
 		<style>
+			/* Header Styles */
+			.main-header {
+				text-align: center;
+				margin-bottom: 3rem;
+				position: relative;
+			}
+
+			.header-user-section {
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				gap: 1rem;
+				margin-bottom: 1rem;
+			}
+
+			.user-info {
+				color: var(--text-secondary);
+				font-size: 0.9rem;
+			}
+
+			.logout-btn {
+				padding: 0.5rem 1rem;
+				font-size: 0.9rem;
+			}
+
+			.header-content {
+				margin-top: 1rem;
+			}
+
+			.header-title {
+				font-size: 3rem;
+				margin-bottom: 0.5rem;
+				background: linear-gradient(
+					135deg,
+					hsl(260, 85%, 65%),
+					hsl(200, 90%, 60%)
+				);
+				-webkit-background-clip: text;
+				-webkit-text-fill-color: transparent;
+				background-clip: text;
+			}
+
+			.header-subtitle {
+				color: var(--text-secondary);
+				font-size: 1.1rem;
+			}
+
 			.loan-card {
 				animation: slideUp 0.3s ease;
 			}
@@ -622,9 +859,51 @@ try {
 				}
 			}
 
+			/* Responsive Styles */
 			@media (max-width: 968px) {
 				.grid-2 {
 					grid-template-columns: 1fr !important;
+				}
+			}
+
+			@media (max-width: 768px) {
+				.header-user-section {
+					flex-direction: column;
+					align-items: stretch;
+					gap: 0.5rem;
+				}
+
+				.user-info {
+					text-align: center;
+					font-size: 0.85rem;
+				}
+
+				.logout-btn {
+					width: 100%;
+				}
+
+				.header-title {
+					font-size: 2rem;
+				}
+
+				.header-subtitle {
+					font-size: 0.95rem;
+				}
+
+				/* Make chart responsive */
+				#contact-chart > div {
+					grid-template-columns: 1fr !important;
+					justify-items: center;
+				}
+			}
+
+			@media (max-width: 480px) {
+				.header-title {
+					font-size: 1.75rem;
+				}
+
+				.header-subtitle {
+					font-size: 0.9rem;
 				}
 			}
 		</style>
