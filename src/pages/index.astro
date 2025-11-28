@@ -148,54 +148,96 @@ try {
 			<!-- Two Column Layout for Loans -->
 			<div class="grid grid-2" style="gap: 2rem; align-items: start;">
 				<!-- Left Column: Loans I've Given (as Lender) -->
-				<div>
-					<h2
-						style="font-size: 1.75rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
-					>
-						💰 Préstamos que he Dado
-					</h2>
-					<div id="lender-loans-list" class="loans-grid"></div>
+				<div class="loan-section">
 					<div
-						id="lender-empty-state"
-						style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+						class="loan-section-header"
+						id="lender-loans-header"
+						style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; cursor: pointer; user-select: none;"
 					>
-						<p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
-							📭 No has dado préstamos aún
-						</p>
-						<p>
-							Crea tu primer préstamo usando el formulario de
-							arriba
-						</p>
+						<h2
+							style="margin: 0; font-size: 1.75rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: flex; align-items: center; gap: 0.5rem;"
+						>
+							💰 Préstamos que he Dado
+							<span
+								id="lender-toggle-icon"
+								style="transition: transform 0.3s ease; font-size: 0.5em; opacity: 0.7;"
+								>▼</span
+							>
+						</h2>
+					</div>
+					<div
+						id="lender-loans-content"
+						class="loan-section-content"
+						style="max-height: 600px; overflow-y: auto; overflow-x: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: 1;"
+					>
+						<div id="lender-loans-list" class="loans-grid"></div>
+						<div
+							id="lender-empty-state"
+							style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+						>
+							<p
+								style="font-size: 1.2rem; margin-bottom: 0.5rem;"
+							>
+								📭 No has dado préstamos aún
+							</p>
+							<p>
+								Crea tu primer préstamo usando el formulario de
+								arriba
+							</p>
+						</div>
 					</div>
 				</div>
 
 				<!-- Right Column: Loans I Owe (as Borrower) + Pending Invitations -->
-				<div>
-					<h2
-						style="font-size: 1.75rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
-					>
-						💳 Préstamos que Debo
-					</h2>
-
-					<!-- Pending Invitations (shown first if any) -->
-					<div id="pending-section" style="margin-bottom: 2rem;">
-						<div id="pending-loans-list" class="loans-grid"></div>
-						<div id="pending-empty-state" style="display: none;">
-						</div>
-					</div>
-
-					<!-- Accepted Borrower Loans -->
-					<div id="borrower-loans-list" class="loans-grid"></div>
+				<div class="loan-section">
 					<div
-						id="borrower-empty-state"
-						style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+						class="loan-section-header"
+						id="borrower-loans-header"
+						style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; cursor: pointer; user-select: none;"
 					>
-						<p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
-							📭 No tienes préstamos pendientes
-						</p>
-						<p>
-							Cuando alguien te envíe un préstamo, aparecerá aquí
-						</p>
+						<h2
+							style="margin: 0; font-size: 1.75rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: flex; align-items: center; gap: 0.5rem;"
+						>
+							💳 Préstamos que Debo
+							<span
+								id="borrower-toggle-icon"
+								style="transition: transform 0.3s ease; font-size: 0.5em; opacity: 0.7;"
+								>▼</span
+							>
+						</h2>
+					</div>
+					<div
+						id="borrower-loans-content"
+						class="loan-section-content"
+						style="max-height: 600px; overflow-y: auto; overflow-x: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: 1;"
+					>
+						<!-- Pending Invitations (shown first if any) -->
+						<div id="pending-section" style="margin-bottom: 2rem;">
+							<div id="pending-loans-list" class="loans-grid">
+							</div>
+							<div
+								id="pending-empty-state"
+								style="display: none;"
+							>
+							</div>
+						</div>
+
+						<!-- Accepted Borrower Loans -->
+						<div id="borrower-loans-list" class="loans-grid"></div>
+						<div
+							id="borrower-empty-state"
+							style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+						>
+							<p
+								style="font-size: 1.2rem; margin-bottom: 0.5rem;"
+							>
+								📭 No tienes préstamos pendientes
+							</p>
+							<p>
+								Cuando alguien te envíe un préstamo, aparecerá
+								aquí
+							</p>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -626,7 +668,7 @@ try {
 				];
 
 				// Create donut chart
-				const size = 200;
+				const size = 250;
 				const strokeWidth = 30;
 				const radius = (size - strokeWidth) / 2;
 				const circumference = 2 * Math.PI * radius;
@@ -733,6 +775,97 @@ try {
 				loadLoans();
 			});
 
+			// Toggle loan sections visibility
+			const lenderLoansContent = document.getElementById(
+				"lender-loans-content",
+			);
+			const lenderToggleIcon =
+				document.getElementById("lender-toggle-icon");
+			const lenderLoansHeader = document.getElementById(
+				"lender-loans-header",
+			);
+
+			const borrowerLoansContent = document.getElementById(
+				"borrower-loans-content",
+			);
+			const borrowerToggleIcon = document.getElementById(
+				"borrower-toggle-icon",
+			);
+			const borrowerLoansHeader = document.getElementById(
+				"borrower-loans-header",
+			);
+
+			let isLenderVisible =
+				localStorage.getItem("lenderLoansVisible") !== "false";
+			let isBorrowerVisible =
+				localStorage.getItem("borrowerLoansVisible") !== "false";
+
+			// Set visibility for lender loans
+			function setLenderVisibility(visible: boolean) {
+				if (
+					!lenderLoansContent ||
+					!lenderToggleIcon ||
+					!lenderLoansHeader
+				)
+					return;
+
+				if (visible) {
+					lenderLoansContent.style.maxHeight = "600px";
+					lenderLoansContent.style.opacity = "1";
+					lenderToggleIcon.style.transform = "rotate(0deg)";
+					lenderLoansHeader.style.marginBottom = "1.5rem";
+				} else {
+					lenderLoansContent.style.maxHeight = "0";
+					lenderLoansContent.style.opacity = "0";
+					lenderToggleIcon.style.transform = "rotate(-90deg)";
+					lenderLoansHeader.style.marginBottom = "0";
+				}
+
+				localStorage.setItem("lenderLoansVisible", visible.toString());
+			}
+
+			// Set visibility for borrower loans
+			function setBorrowerVisibility(visible: boolean) {
+				if (
+					!borrowerLoansContent ||
+					!borrowerToggleIcon ||
+					!borrowerLoansHeader
+				)
+					return;
+
+				if (visible) {
+					borrowerLoansContent.style.maxHeight = "600px";
+					borrowerLoansContent.style.opacity = "1";
+					borrowerToggleIcon.style.transform = "rotate(0deg)";
+					borrowerLoansHeader.style.marginBottom = "1.5rem";
+				} else {
+					borrowerLoansContent.style.maxHeight = "0";
+					borrowerLoansContent.style.opacity = "0";
+					borrowerToggleIcon.style.transform = "rotate(-90deg)";
+					borrowerLoansHeader.style.marginBottom = "0";
+				}
+
+				localStorage.setItem(
+					"borrowerLoansVisible",
+					visible.toString(),
+				);
+			}
+
+			// Initialize visibility
+			setLenderVisibility(isLenderVisible);
+			setBorrowerVisibility(isBorrowerVisible);
+
+			// Toggle on header click
+			lenderLoansHeader?.addEventListener("click", () => {
+				isLenderVisible = !isLenderVisible;
+				setLenderVisibility(isLenderVisible);
+			});
+
+			borrowerLoansHeader?.addEventListener("click", () => {
+				isBorrowerVisible = !isBorrowerVisible;
+				setBorrowerVisibility(isBorrowerVisible);
+			});
+
 			// Initial load
 			loadLoans();
 		</script>
@@ -783,6 +916,35 @@ try {
 			.header-subtitle {
 				color: var(--text-secondary);
 				font-size: 1.1rem;
+			}
+
+			/* Loan Section Styles */
+			.loan-section-header:hover {
+				opacity: 0.9;
+			}
+
+			.loan-section-content {
+				transition:
+					max-height 0.3s ease,
+					opacity 0.3s ease;
+			}
+
+			.loan-section-content::-webkit-scrollbar {
+				width: 8px;
+			}
+
+			.loan-section-content::-webkit-scrollbar-track {
+				background: var(--bg-tertiary);
+				border-radius: 4px;
+			}
+
+			.loan-section-content::-webkit-scrollbar-thumb {
+				background: var(--bg-hover);
+				border-radius: 4px;
+			}
+
+			.loan-section-content::-webkit-scrollbar-thumb:hover {
+				background: rgba(139, 92, 246, 0.5);
 			}
 
 			.loan-card {
