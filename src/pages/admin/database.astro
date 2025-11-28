@@ -1,6 +1,7 @@
 ---
 // ⚠️ SOLO PARA DESARROLLO/DEBUGGING
 // Protege esta página en producción
+import "../../styles/global.css";
 
 const sessionCookie = Astro.cookies.get("session");
 if (!sessionCookie) {
@@ -25,7 +26,6 @@ if (session.email !== "johnnyvargasdiaz@gmail.com") {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width" />
         <title>Admin - Database Query</title>
-        <link rel="stylesheet" href="/src/styles/global.css" />
     </head>
     <body>
         <div
