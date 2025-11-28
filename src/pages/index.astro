@@ -338,14 +338,49 @@ try {
 
 				if (!list || !emptyState) return;
 
-				if (loans.length === 0) {
+				const activeLoans = loans.filter(
+					(loan) =>
+						loan.status !== "returned" &&
+						loan.status !== "rejected",
+				);
+
+				// Sort loans: 1) Accepted status first, 2) Pending payments, 3) Non-personal loans, 4) Creation date
+				const sortedLoans = activeLoans.sort((a, b) => {
+					// First priority: accepted status comes before pending
+					if (a.status === "accepted" && b.status !== "accepted")
+						return -1;
+					if (a.status !== "accepted" && b.status === "accepted")
+						return 1;
+
+					// Second priority: loans with pending payments (only for accepted loans)
+					const aPendingPayments = a.pendingPaymentsCount || 0;
+					const bPendingPayments = b.pendingPaymentsCount || 0;
+					if (aPendingPayments > 0 && bPendingPayments === 0)
+						return -1;
+					if (aPendingPayments === 0 && bPendingPayments > 0)
+						return 1;
+
+					// Third priority: non-personal loans before personal loans
+					const aIsPersonal = a.is_personal === 1;
+					const bIsPersonal = b.is_personal === 1;
+					if (!aIsPersonal && bIsPersonal) return -1;
+					if (aIsPersonal && !bIsPersonal) return 1;
+
+					// Fourth priority: sort by creation date (newest first)
+					return (
+						new Date(b.created_at).getTime() -
+						new Date(a.created_at).getTime()
+					);
+				});
+
+				if (sortedLoans.length === 0) {
 					list.style.display = "none";
 					emptyState.style.display = "block";
 				} else {
 					list.style.display = "grid";
 					emptyState.style.display = "none";
 
-					list.innerHTML = loans
+					list.innerHTML = sortedLoans
 						.map((loan) => {
 							const statusText: Record<string, string> = {
 								pending: "⏳ Pendiente de Aceptación",
@@ -402,7 +437,7 @@ try {
 						<div class="loan-card card ${loan.pendingPaymentsCount > 0 ? "loan-with-pending-payments" : ""}">
 							<div class="loan-header">
 								<div>
-									<h3 class="loan-borrower">Préstamo a ${loan.borrower_name}</h3>
+									<h3 class="loan-borrower">${loan.is_personal ? "📝 " : ""}Préstamo a ${loan.borrower_name}</h3>
 									<p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0;">
 										📧 ${loan.borrower_email}
 									</p>
@@ -463,14 +498,35 @@ try {
 
 				if (!list || !emptyState) return;
 
-				if (loans.length === 0) {
+				const activeLoans = loans.filter(
+					(loan) =>
+						loan.status !== "returned" &&
+						loan.status !== "rejected",
+				);
+
+				// Sort loans: accepted first, then pending
+				const sortedLoans = activeLoans.sort((a, b) => {
+					// First priority: accepted status comes before pending
+					if (a.status === "accepted" && b.status !== "accepted")
+						return -1;
+					if (a.status !== "accepted" && b.status === "accepted")
+						return 1;
+
+					// Second priority: sort by creation date (newest first)
+					return (
+						new Date(b.created_at).getTime() -
+						new Date(a.created_at).getTime()
+					);
+				});
+
+				if (sortedLoans.length === 0) {
 					list.style.display = "none";
 					emptyState.style.display = "block";
 				} else {
 					list.style.display = "grid";
 					emptyState.style.display = "none";
 
-					list.innerHTML = loans
+					list.innerHTML = sortedLoans
 						.map((loan) => {
 							const statusText: Record<string, string> = {
 								accepted: "✅ Aceptado",
@@ -505,7 +561,7 @@ try {
 								<div class="loan-card card">
 									<div class="loan-header">
 										<div>
-											<h3 class="loan-borrower">Préstamo de ${loan.lender_name || "Desconocido"}</h3>
+											<h3 class="loan-borrower">${loan.is_personal ? "📝 " : ""}Préstamo de ${loan.lender_name || "Desconocido"}</h3>
 											<p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0;">
 												📧 ${loan.lender_email || ""}
 											</p>
@@ -927,6 +983,7 @@ try {
 				transition:
 					max-height 0.3s ease,
 					opacity 0.3s ease;
+				padding: 3px;
 			}
 
 			.loan-section-content::-webkit-scrollbar {

@@ -11,7 +11,7 @@
 
   <form id="loan-form">
     <div class="input-group">
-      <label for="contact-search">Conocido *</label>
+      <label for="contact-search">Conocido (Opcional)</label>
       <div style="position: relative;">
         <input
           type="text"
@@ -19,7 +19,6 @@
           name="contactSearch"
           placeholder="Buscar por nombre o email..."
           autocomplete="off"
-          required
         />
         <div
           id="contact-suggestions"
@@ -34,11 +33,11 @@
       <p
         style="font-size: 0.85rem; color: var(--text-tertiary); margin-top: 0.5rem;"
       >
-        Escribe para buscar un conocido existente o crear uno nuevo
+        Deja vacío para crear un préstamo personal
       </p>
     </div>
 
-    <div class="input-group">
+    <div class="input-group" style="display: none;">
       <label for="borrower-phone">WhatsApp del Prestatario (Opcional)</label>
       <input
         type="tel"
@@ -238,6 +237,7 @@
 
     let borrowerEmail = selectedContactEmail.value;
     let borrowerName = selectedContactName.value;
+    let isPersonal = false;
 
     // If no contact selected, parse from search field
     if (!borrowerEmail) {
@@ -248,6 +248,12 @@
       if (emailRegex.test(searchValue)) {
         borrowerEmail = searchValue;
         borrowerName = searchValue.split("@")[0]; // Use email prefix as name
+        isPersonal = false;
+      } else if (searchValue === "") {
+        // Empty field = personal loan
+        isPersonal = true;
+        borrowerEmail = "personal@loan.local";
+        borrowerName = "Préstamo Personal";
       } else {
         if (messageDiv) {
           messageDiv.style.display = "block";
@@ -277,6 +283,7 @@
           borrowerPhone: borrowerPhone || undefined,
           amount,
           description,
+          isPersonal,
         }),
       });
 

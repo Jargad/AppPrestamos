@@ -177,6 +177,7 @@ export interface Loan {
     status: 'pending' | 'accepted' | 'rejected' | 'returned' | 'edit-pending';
     evidence: string | null;
     invitation_token: string | null;
+    is_personal: number;
     created_at: string;
     updated_at: string;
 }
@@ -188,27 +189,33 @@ export function createLoan(
     borrowerName: string,
     amount: number,
     description: string,
-    invitationToken: string
+    invitationToken: string,
+    isPersonal: boolean = false
 ): Loan {
     const now = new Date().toISOString();
+    const status = isPersonal ? 'accepted' : 'pending';
+    const borrowerId = isPersonal ? lenderId : null;
+    const isPersonalInt = isPersonal ? 1 : 0;
+
     const stmt = db.prepare(`
-    INSERT INTO loans (id, lender_id, borrower_email, borrower_id, borrower_name, amount, description, status, evidence, invitation_token, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?, ?, ?)
+    INSERT INTO loans (id, lender_id, borrower_email, borrower_id, borrower_name, amount, description, status, evidence, invitation_token, is_personal, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)
   `);
 
-    stmt.run(id, lenderId, borrowerEmail.toLowerCase(), null, borrowerName, amount, description, invitationToken, now, now);
+    stmt.run(id, lenderId, borrowerEmail.toLowerCase(), borrowerId, borrowerName, amount, description, status, invitationToken, isPersonalInt, now, now);
 
     return {
         id,
         lender_id: lenderId,
         borrower_email: borrowerEmail.toLowerCase(),
-        borrower_id: null,
+        borrower_id: borrowerId,
         borrower_name: borrowerName,
         amount,
         description,
-        status: 'pending',
+        status,
         evidence: null,
         invitation_token: invitationToken,
+        is_personal: isPersonalInt,
         created_at: now,
         updated_at: now
     };
@@ -322,27 +329,44 @@ export function createPayment(
     notes?: string
 ): Payment {
     const now = new Date().toISOString();
+
+    // Check if loan is personal
+    const loan = getLoanById(loanId);
+    const isPersonal = loan?.is_personal === 1;
+
+    // Auto-confirm if personal loan
+    const status: 'pending' | 'confirmed' | 'rejected' = isPersonal ? 'confirmed' : 'pending';
+    const confirmedBy = isPersonal ? createdBy : null;
+    const confirmedAt = isPersonal ? now : null;
+
     const stmt = db.prepare(`
         INSERT INTO payments (id, loan_id, amount, payment_type, evidence_url, status, notes, rejection_reason, created_by, confirmed_by, created_at, confirmed_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', ?, NULL, ?, NULL, ?, NULL)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)
     `);
 
-    stmt.run(id, loanId, amount, paymentType, evidenceUrl, notes || null, createdBy, now);
+    stmt.run(id, loanId, amount, paymentType, evidenceUrl, status, notes || null, createdBy, confirmedBy, now, confirmedAt);
 
-    return {
+    const payment: Payment = {
         id,
         loan_id: loanId,
         amount,
         payment_type: paymentType,
         evidence_url: evidenceUrl,
-        status: 'pending',
+        status,
         notes: notes || null,
         rejection_reason: null,
         created_by: createdBy,
-        confirmed_by: null,
+        confirmed_by: confirmedBy,
         created_at: now,
-        confirmed_at: null
+        confirmed_at: confirmedAt
     };
+
+    // Check if loan should be marked as returned (for personal loans)
+    if (isPersonal) {
+        checkAndUpdateLoanStatus(loanId);
+    }
+
+    return payment;
 }
 
 export function getPaymentsByLoanId(loanId: string): Payment[] {

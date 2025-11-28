@@ -34,13 +34,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         const body = await request.json();
-        const { borrowerEmail, borrowerName, borrowerPhone, amount, description } = body;
+        const { borrowerEmail, borrowerName, borrowerPhone, amount, description, isPersonal } = body;
 
         // Validate input
-        if (!borrowerEmail || !borrowerName || !amount || !description) {
+        if (!amount || !description) {
             return new Response(JSON.stringify({
                 success: false,
-                error: 'Todos los campos son requeridos'
+                error: 'Monto y descripción son requeridos'
+            }), { status: 400 });
+        }
+
+        // For personal loans, borrowerEmail and borrowerName are optional
+        if (!isPersonal && (!borrowerEmail || !borrowerName)) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Email y nombre del prestatario son requeridos para préstamos con contacto'
             }), { status: 400 });
         }
 
@@ -51,12 +59,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const loan = dbCreateLoan(
             loanId,
             session.userId,
-            borrowerEmail,
-            borrowerName,
+            borrowerEmail || session.email,
+            borrowerName || 'Préstamo Personal',
             amount,
             description,
-            invitationToken
+            invitationToken,
+            isPersonal || false
         );
+
+        // Skip contact creation and notifications for personal loans
+        if (isPersonal) {
+            return new Response(JSON.stringify({
+                success: true,
+                loan,
+                notificationSent: false,
+                notificationMethod: 'none'
+            }), { status: 201 });
+        }
 
         // Add borrower as contact for lender (if not already)
         const existingContact = getContactByEmail(session.userId, borrowerEmail);
