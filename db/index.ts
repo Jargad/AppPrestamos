@@ -452,4 +452,126 @@ function checkAndUpdateLoanStatus(loanId: string): void {
     }
 }
 
+// ===== EXPENSE FUNCTIONS =====
+
+export interface Expense {
+    id: string;
+    user_id: string;
+    description: string;
+    amount: number;
+    category: string;
+    expense_date: string;
+    is_recurring: number;
+    recurrence_day: number | null;
+    created_at: string;
+}
+
+export function createExpense(
+    id: string,
+    userId: string,
+    description: string,
+    amount: number,
+    category: string,
+    expenseDate: string,
+    isRecurring: boolean = false,
+    recurrenceDay: number | null = null
+): Expense {
+    const now = new Date().toISOString();
+    const isRecurringInt = isRecurring ? 1 : 0;
+    const stmt = db.prepare(`
+        INSERT INTO expenses (id, user_id, description, amount, category, expense_date, is_recurring, recurrence_day, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(id, userId, description, amount, category, expenseDate, isRecurringInt, recurrenceDay, now);
+
+    return {
+        id,
+        user_id: userId,
+        description,
+        amount,
+        category,
+        expense_date: expenseDate,
+        is_recurring: isRecurringInt,
+        recurrence_day: recurrenceDay,
+        created_at: now
+    };
+}
+
+export function getExpensesByUserId(userId: string, year?: number, month?: number): Expense[] {
+    let query = 'SELECT * FROM expenses WHERE user_id = ?';
+    const params: any[] = [userId];
+
+    if (year !== undefined) {
+        query += ' AND strftime(\'%Y\', expense_date) = ?';
+        params.push(year.toString());
+    }
+
+    if (month !== undefined) {
+        query += ' AND strftime(\'%m\', expense_date) = ?';
+        params.push(month.toString().padStart(2, '0'));
+    }
+
+    query += ' ORDER BY expense_date DESC, created_at DESC';
+
+    const stmt = db.prepare(query);
+    return stmt.all(...params) as Expense[];
+}
+
+export function updateExpense(
+    expenseId: string,
+    userId: string,
+    updates: {
+        description?: string;
+        amount?: number;
+        category?: string;
+        expenseDate?: string;
+        isRecurring?: boolean;
+        recurrenceDay?: number | null;
+    }
+): boolean {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.description !== undefined) {
+        fields.push('description = ?');
+        values.push(updates.description);
+    }
+    if (updates.amount !== undefined) {
+        fields.push('amount = ?');
+        values.push(updates.amount);
+    }
+    if (updates.category !== undefined) {
+        fields.push('category = ?');
+        values.push(updates.category);
+    }
+    if (updates.expenseDate !== undefined) {
+        fields.push('expense_date = ?');
+        values.push(updates.expenseDate);
+    }
+    if (updates.isRecurring !== undefined) {
+        fields.push('is_recurring = ?');
+        values.push(updates.isRecurring ? 1 : 0);
+    }
+    if (updates.recurrenceDay !== undefined) {
+        fields.push('recurrence_day = ?');
+        values.push(updates.recurrenceDay);
+    }
+
+    if (fields.length === 0) return false;
+
+    values.push(expenseId, userId);
+
+    const stmt = db.prepare(`UPDATE expenses SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`);
+    const result = stmt.run(...values);
+
+    return result.changes > 0;
+}
+
+export function deleteExpense(expenseId: string, userId: string): boolean {
+    const stmt = db.prepare('DELETE FROM expenses WHERE id = ? AND user_id = ?');
+    const result = stmt.run(expenseId, userId);
+    return result.changes > 0;
+}
+
 export default db;

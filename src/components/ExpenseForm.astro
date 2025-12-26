@@ -1,0 +1,182 @@
+<div class="card">
+    <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">
+        ➕ Agregar Nuevo Gasto
+    </h3>
+
+    <form id="expense-form">
+        <div class="input-group">
+            <label for="expense-description">Descripción</label>
+            <input
+                type="text"
+                id="expense-description"
+                name="description"
+                required
+                placeholder="Ej: Pago de arriendo, Compra de mercado..."
+            />
+        </div>
+
+        <div class="grid grid-2">
+            <div class="input-group">
+                <label for="expense-amount">Monto</label>
+                <input
+                    type="number"
+                    id="expense-amount"
+                    name="amount"
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="expense-category">Categoría</label>
+                <select id="expense-category" name="category" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="Vivienda">🏠 Vivienda</option>
+                    <option value="Transporte">🚗 Transporte</option>
+                    <option value="Alimentación">🍔 Alimentación</option>
+                    <option value="Servicios">💡 Servicios</option>
+                    <option value="Entretenimiento">🎮 Entretenimiento</option>
+                    <option value="Salud">⚕️ Salud</option>
+                    <option value="Educación">📚 Educación</option>
+                    <option value="Otros">📦 Otros</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="expense-date">Fecha</label>
+            <input type="date" id="expense-date" name="expenseDate" required />
+        </div>
+
+        <div class="input-group" style="margin-bottom: 1rem;">
+            <label
+                style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;"
+            >
+                <input
+                    type="checkbox"
+                    id="expense-recurring"
+                    name="isRecurring"
+                    style="width: auto; cursor: pointer;"
+                />
+                <span>🔄 Gasto Recurrente/Suscripción</span>
+            </label>
+        </div>
+
+        <div
+            id="recurrence-day-field"
+            class="input-group"
+            style="display: none;"
+        >
+            <label for="recurrence-day">Día del Mes (1-31)</label>
+            <input
+                type="number"
+                id="recurrence-day"
+                name="recurrenceDay"
+                min="1"
+                max="31"
+                placeholder="Ej: 15"
+            />
+            <small
+                style="color: var(--text-tertiary); margin-top: 0.25rem; display: block;"
+            >
+                Día del mes en que se cobra este gasto
+            </small>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+            💾 Guardar Gasto
+        </button>
+    </form>
+</div>
+
+<script>
+    const form = document.getElementById("expense-form") as HTMLFormElement;
+    const recurringCheckbox = document.getElementById(
+        "expense-recurring",
+    ) as HTMLInputElement;
+    const recurrenceDayField = document.getElementById("recurrence-day-field");
+    const recurrenceDayInput = document.getElementById(
+        "recurrence-day",
+    ) as HTMLInputElement;
+
+    // Set default date to today
+    const dateInput = document.getElementById(
+        "expense-date",
+    ) as HTMLInputElement;
+    if (dateInput) {
+        dateInput.valueAsDate = new Date();
+    }
+
+    // Toggle recurrence day field
+    recurringCheckbox?.addEventListener("change", () => {
+        if (recurrenceDayField) {
+            recurrenceDayField.style.display = recurringCheckbox.checked
+                ? "block"
+                : "none";
+            if (recurringCheckbox.checked) {
+                recurrenceDayInput.required = true;
+            } else {
+                recurrenceDayInput.required = false;
+                recurrenceDayInput.value = "";
+            }
+        }
+    });
+
+    form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const data: any = {
+            description: formData.get("description"),
+            amount: formData.get("amount"),
+            category: formData.get("category"),
+            expenseDate: formData.get("expenseDate"),
+            isRecurring: recurringCheckbox.checked,
+        };
+
+        if (recurringCheckbox.checked) {
+            data.recurrenceDay = formData.get("recurrenceDay");
+        }
+
+        try {
+            const response = await fetch("/api/expenses", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                form.reset();
+                // Set date back to today
+                if (dateInput) {
+                    dateInput.valueAsDate = new Date();
+                }
+                // Hide recurrence day field
+                if (recurrenceDayField) {
+                    recurrenceDayField.style.display = "none";
+                }
+                // Dispatch event to reload expenses
+                window.dispatchEvent(new Event("expense-created"));
+            } else {
+                alert(result.error || "Error al crear gasto");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Error de conexión");
+        }
+    });
+</script>
+
+<style>
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+</style>

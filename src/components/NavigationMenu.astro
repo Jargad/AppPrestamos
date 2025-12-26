@@ -1,0 +1,260 @@
+---
+const sessionCookie = Astro.cookies.get("session");
+let username = "Usuario";
+if (sessionCookie) {
+    try {
+        const session = JSON.parse(sessionCookie.value);
+        username = session.username;
+    } catch {}
+}
+---
+
+<div id="nav-menu" class="nav-menu">
+    <div class="nav-overlay"></div>
+    <nav class="nav-content">
+        <div class="nav-header">
+            <h2>Menú</h2>
+            <div class="user-badge">
+                <span class="user-icon">👤</span>
+                <span class="user-name">{username}</span>
+            </div>
+        </div>
+
+        <ul class="nav-links">
+            <li>
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">💸</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="/expenses" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Gastos</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-footer">
+            <button
+                id="nav-logout-btn"
+                class="btn btn-danger"
+                style="width: 100%;"
+            >
+                🚪 Cerrar Sesión
+            </button>
+        </div>
+    </nav>
+</div>
+
+<script>
+    const navMenu = document.getElementById("nav-menu");
+    const menuButton = document.getElementById("menu-button");
+    const navOverlay = document.querySelector(".nav-overlay");
+    const navLogoutBtn = document.getElementById("nav-logout-btn");
+
+    // Toggle menu
+    function toggleMenu() {
+        navMenu?.classList.toggle("active");
+        menuButton?.classList.toggle("active");
+        document.body.style.overflow = navMenu?.classList.contains("active")
+            ? "hidden"
+            : "";
+    }
+
+    // Open menu
+    menuButton?.addEventListener("click", toggleMenu);
+
+    // Close menu when clicking overlay
+    navOverlay?.addEventListener("click", toggleMenu);
+
+    // Close menu when clicking a link
+    document.querySelectorAll(".nav-link").forEach((link) => {
+        link.addEventListener("click", () => {
+            setTimeout(toggleMenu, 100);
+        });
+    });
+
+    // Logout handler
+    navLogoutBtn?.addEventListener("click", async () => {
+        if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/auth";
+        }
+    });
+
+    // Close menu on escape key
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && navMenu?.classList.contains("active")) {
+            toggleMenu();
+        }
+    });
+</script>
+
+<style>
+    .nav-menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity var(--transition-base);
+    }
+
+    .nav-menu.active {
+        pointer-events: all;
+        opacity: 1;
+    }
+
+    .nav-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        transition: opacity var(--transition-base);
+    }
+
+    .nav-menu.active .nav-overlay {
+        opacity: 1;
+    }
+
+    .nav-content {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100%;
+        max-width: 400px;
+        height: 100%;
+        background: linear-gradient(
+            135deg,
+            var(--bg-secondary) 0%,
+            var(--bg-primary) 100%
+        );
+        border-left: 1px solid var(--border-color);
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        flex-direction: column;
+        padding: var(--spacing-xl);
+        transform: translateX(100%);
+        transition: transform var(--transition-slow);
+    }
+
+    .nav-menu.active .nav-content {
+        transform: translateX(0);
+    }
+
+    .nav-header {
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .nav-header h2 {
+        font-size: 2rem;
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-secondary)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .user-badge {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+    }
+
+    .user-icon {
+        font-size: 1.2rem;
+    }
+
+    .user-name {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .nav-links {
+        list-style: none;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        padding: var(--spacing-lg);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 1.1rem;
+        font-weight: 500;
+        transition: all var(--transition-base);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .nav-link::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(139, 92, 246, 0.1),
+            transparent
+        );
+        transition: left var(--transition-slow);
+    }
+
+    .nav-link:hover::before {
+        left: 100%;
+    }
+
+    .nav-link:hover {
+        background: var(--bg-hover);
+        border-color: var(--color-primary);
+        transform: translateX(8px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+    }
+
+    .nav-icon {
+        font-size: 1.5rem;
+    }
+
+    .nav-text {
+        flex: 1;
+    }
+
+    .nav-footer {
+        margin-top: var(--spacing-xl);
+        padding-top: var(--spacing-xl);
+        border-top: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 480px) {
+        .nav-content {
+            max-width: 100%;
+        }
+    }
+</style>

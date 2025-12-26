@@ -1,6 +1,8 @@
 ---
 import LoanForm from "../components/LoanForm.astro";
 import ContactsManager from "../components/ContactsManager.astro";
+import MenuButton from "../components/MenuButton.astro";
+import NavigationMenu from "../components/NavigationMenu.astro";
 import "../styles/global.css";
 
 // Check authentication
@@ -21,7 +23,7 @@ try {
 <html lang="es">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/svg+xml" href="/logo.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<meta
@@ -31,9 +33,11 @@ try {
 		<title>Gestor de Préstamos</title>
 	</head>
 	<body>
+		<NavigationMenu />
 		<div class="container">
 			<header class="main-header">
 				<div class="header-user-section">
+					<MenuButton />
 					<span id="user-info" class="user-info">
 						👤 {session.username}
 					</span>

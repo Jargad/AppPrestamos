@@ -74,6 +74,20 @@ CREATE TABLE IF NOT EXISTS payments (
     FOREIGN KEY (confirmed_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Expenses table
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    category TEXT NOT NULL,
+    expense_date TEXT NOT NULL,
+    is_recurring INTEGER DEFAULT 0,
+    recurrence_day INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_loans_lender ON loans(lender_id);
 CREATE INDEX IF NOT EXISTS idx_loans_borrower ON loans(borrower_id);
@@ -83,4 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_loans_token ON loans(invitation_token);
 CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_loan ON payments(loan_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
+CREATE INDEX IF NOT EXISTS idx_expenses_recurring ON expenses(is_recurring);
 `;

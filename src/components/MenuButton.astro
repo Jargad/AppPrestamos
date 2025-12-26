@@ -1,0 +1,57 @@
+<button id="menu-button" class="menu-button" aria-label="Abrir menú">
+    <span class="menu-icon"></span>
+    <span class="menu-icon"></span>
+    <span class="menu-icon"></span>
+</button>
+
+<style>
+    .menu-button {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0;
+        transition: all var(--transition-base);
+        z-index: 1001;
+    }
+
+    .menu-button:hover {
+        background: var(--bg-hover);
+        border-color: var(--color-primary);
+        transform: scale(1.05);
+    }
+
+    .menu-icon {
+        width: 24px;
+        height: 2px;
+        background: var(--text-primary);
+        border-radius: 2px;
+        transition: all var(--transition-base);
+    }
+
+    .menu-button.active .menu-icon:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+    }
+
+    .menu-button.active .menu-icon:nth-child(2) {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    .menu-button.active .menu-icon:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+    }
+
+    .menu-button.active {
+        background: var(--bg-hover);
+        border-color: var(--color-primary);
+    }
+</style>

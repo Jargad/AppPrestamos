@@ -1,0 +1,915 @@
+---
+import MenuButton from "../components/MenuButton.astro";
+import NavigationMenu from "../components/NavigationMenu.astro";
+import ExpenseForm from "../components/ExpenseForm.astro";
+import "../styles/global.css";
+
+// Check authentication
+const sessionCookie = Astro.cookies.get("session");
+if (!sessionCookie) {
+    return Astro.redirect("/auth");
+}
+
+let session;
+try {
+    session = JSON.parse(sessionCookie.value);
+} catch {
+    return Astro.redirect("/auth");
+}
+---
+
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <meta
+            name="description"
+            content="Gestiona tus gastos mensuales y anuales"
+        />
+        <title>Gastos - Gestor de Préstamos</title>
+    </head>
+    <body>
+        <NavigationMenu />
+        <div class="container">
+            <header class="main-header">
+                <div class="header-user-section">
+                    <MenuButton />
+                    <span id="user-info" class="user-info">
+                        👤 {session.username}
+                    </span>
+                    <button
+                        id="logout-btn"
+                        class="btn btn-secondary logout-btn"
+                    >
+                        🚪 Cerrar Sesión
+                    </button>
+                </div>
+                <div class="header-content">
+                    <h1 class="header-title">📊 Gestión de Gastos</h1>
+                    <p class="header-subtitle">
+                        Registra y controla tus gastos mensuales y anuales
+                    </p>
+                </div>
+            </header>
+
+            <!-- Statistics Section -->
+            <div class="grid grid-2" style="margin-bottom: 3rem;">
+                <div
+                    class="card"
+                    style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(96, 165, 250, 0.1)); border-color: rgba(139, 92, 246, 0.3);"
+                >
+                    <h3 style="margin-bottom: 1rem; font-size: 1.25rem;">
+                        📈 Estadísticas
+                    </h3>
+                    <div id="stats" style="display: grid; gap: 1rem;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center;"
+                        >
+                            <span style="color: var(--text-secondary);"
+                                >Total Gastos del Mes:</span
+                            >
+                            <strong
+                                id="monthly-total"
+                                style="font-size: 1.5rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+                                >$0</strong
+                            >
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center;"
+                        >
+                            <span style="color: var(--text-secondary);"
+                                >Total Gastos del Año:</span
+                            >
+                            <strong
+                                id="annual-total"
+                                style="font-size: 1.5rem; background: linear-gradient(135deg, hsl(355, 75%, 60%), hsl(40, 95%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+                                >$0</strong
+                            >
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center;"
+                        >
+                            <span style="color: var(--text-secondary);"
+                                >Cantidad de Gastos:</span
+                            >
+                            <strong
+                                id="expense-count"
+                                style="font-size: 1.5rem;">0</strong
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <ExpenseForm />
+            </div>
+
+            <!-- Filter Section -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem; font-size: 1.25rem;">
+                    🔍 Filtrar Gastos
+                </h3>
+                <div class="grid grid-2">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label for="filter-year">Año</label>
+                        <select id="filter-year">
+                            <option value="">Todos los años</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label for="filter-month">Mes</label>
+                        <select id="filter-month">
+                            <option value="">Todos los meses</option>
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recurring Expenses Section -->
+            <div class="expenses-section" style="margin-bottom: 3rem;">
+                <h2
+                    style="margin-bottom: 1.5rem; font-size: 1.75rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+                >
+                    🔄 Gastos Recurrentes
+                </h2>
+                <div id="recurring-expenses-list" class="expenses-grid"></div>
+                <div
+                    id="recurring-empty-state"
+                    style="text-align: center; padding: 2rem; color: var(--text-tertiary); display: none; background: var(--bg-tertiary); border-radius: var(--border-radius); border: 1px dashed var(--border-color);"
+                >
+                    <p style="font-size: 1rem; margin-bottom: 0.5rem;">
+                        📅 No hay gastos recurrentes
+                    </p>
+                    <p style="font-size: 0.9rem;">
+                        Marca un gasto como recurrente para verlo aquí
+                    </p>
+                </div>
+            </div>
+
+            <!-- One-time Expenses List -->
+            <div class="expenses-section">
+                <h2
+                    style="margin-bottom: 1.5rem; font-size: 1.75rem; background: linear-gradient(135deg, hsl(260, 85%, 65%), hsl(200, 90%, 60%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+                >
+                    💰 Gastos Únicos
+                </h2>
+                <div id="expenses-list" class="expenses-grid"></div>
+                <div
+                    id="empty-state"
+                    style="text-align: center; padding: 3rem; color: var(--text-tertiary); display: none;"
+                >
+                    <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
+                        📭 No hay gastos registrados
+                    </p>
+                    <p>Agrega tu primer gasto usando el formulario de arriba</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="edit-modal" class="modal-overlay" style="display: none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>✏️ Editar Gasto</h2>
+                    <button id="close-modal-btn" class="close-btn">✕</button>
+                </div>
+                <form id="edit-expense-form">
+                    <input type="hidden" id="edit-expense-id" />
+
+                    <div class="input-group">
+                        <label for="edit-description">Descripción</label>
+                        <input
+                            type="text"
+                            id="edit-description"
+                            required
+                            placeholder="Descripción del gasto"
+                        />
+                    </div>
+
+                    <div class="grid grid-2">
+                        <div class="input-group">
+                            <label for="edit-amount">Monto</label>
+                            <input
+                                type="number"
+                                id="edit-amount"
+                                required
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+
+                        <div class="input-group">
+                            <label for="edit-category">Categoría</label>
+                            <select id="edit-category" required>
+                                <option value="Vivienda">🏠 Vivienda</option>
+                                <option value="Transporte">🚗 Transporte</option
+                                >
+                                <option value="Alimentación"
+                                    >🍔 Alimentación</option
+                                >
+                                <option value="Servicios">💡 Servicios</option>
+                                <option value="Entretenimiento"
+                                    >🎮 Entretenimiento</option
+                                >
+                                <option value="Salud">⚕️ Salud</option>
+                                <option value="Educación">📚 Educación</option>
+                                <option value="Otros">📦 Otros</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="edit-date">Fecha</label>
+                        <input type="date" id="edit-date" required />
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 1rem;">
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;"
+                        >
+                            <input
+                                type="checkbox"
+                                id="edit-recurring"
+                                style="width: auto; cursor: pointer;"
+                            />
+                            <span>🔄 Gasto Recurrente/Suscripción</span>
+                        </label>
+                    </div>
+
+                    <div
+                        id="edit-recurrence-day-field"
+                        class="input-group"
+                        style="display: none;"
+                    >
+                        <label for="edit-recurrence-day"
+                            >Día del Mes (1-31)</label
+                        >
+                        <input
+                            type="number"
+                            id="edit-recurrence-day"
+                            min="1"
+                            max="31"
+                        />
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            style="flex: 1;"
+                        >
+                            💾 Guardar Cambios
+                        </button>
+                        <button
+                            type="button"
+                            id="cancel-edit-btn"
+                            class="btn btn-secondary"
+                            style="flex: 1;"
+                        >
+                            ❌ Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </body>
+</html>
+
+<script>
+    // Format currency
+    function formatCurrency(amount: number): string {
+        return new Intl.NumberFormat("es-CO", {
+            style: "currency",
+            currency: "COP",
+            minimumFractionDigits: 0,
+        }).format(amount);
+    }
+
+    // Format date
+    function formatDate(dateString: string): string {
+        return new Intl.DateTimeFormat("es-CO", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        }).format(new Date(dateString));
+    }
+
+    // Get category icon
+    function getCategoryIcon(category: string): string {
+        const icons: Record<string, string> = {
+            Vivienda: "🏠",
+            Transporte: "🚗",
+            Alimentación: "🍔",
+            Servicios: "💡",
+            Entretenimiento: "🎮",
+            Salud: "⚕️",
+            Educación: "📚",
+            Otros: "📦",
+        };
+        return icons[category] || "📦";
+    }
+
+    // Logout handler
+    document
+        .getElementById("logout-btn")
+        ?.addEventListener("click", async () => {
+            if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.href = "/auth";
+            }
+        });
+
+    // Load expenses
+    async function loadExpenses() {
+        try {
+            const yearFilter = (
+                document.getElementById("filter-year") as HTMLSelectElement
+            )?.value;
+            const monthFilter = (
+                document.getElementById("filter-month") as HTMLSelectElement
+            )?.value;
+
+            let url = "/api/expenses";
+            const params = new URLSearchParams();
+            if (yearFilter) params.append("year", yearFilter);
+            if (monthFilter) params.append("month", monthFilter);
+            if (params.toString()) url += `?${params.toString()}`;
+
+            const response = await fetch(url);
+
+            const data = await response.json();
+
+            if (data.success) {
+                renderExpenses(data.expenses || []);
+                updateStats(data.expenses || []);
+            }
+        } catch (error) {
+            console.error("Error loading expenses:", error);
+        }
+    }
+
+    // Render expenses
+    function renderExpenses(expenses: any[]) {
+        const recurringList = document.getElementById(
+            "recurring-expenses-list",
+        );
+        const oneTimeList = document.getElementById("expenses-list");
+        const recurringEmptyState = document.getElementById(
+            "recurring-empty-state",
+        );
+        const oneTimeEmptyState = document.getElementById("empty-state");
+
+        if (
+            !recurringList ||
+            !oneTimeList ||
+            !recurringEmptyState ||
+            !oneTimeEmptyState
+        )
+            return;
+
+        // Separate recurring and one-time expenses
+        const recurringExpenses = expenses.filter((e) => e.is_recurring === 1);
+        const oneTimeExpenses = expenses.filter((e) => e.is_recurring === 0);
+
+        // Render recurring expenses
+        if (recurringExpenses.length === 0) {
+            recurringList.style.display = "none";
+            recurringEmptyState.style.display = "block";
+        } else {
+            recurringList.style.display = "grid";
+            recurringEmptyState.style.display = "none";
+
+            recurringList.innerHTML = recurringExpenses
+                .map((expense) => {
+                    return `
+								<div class="expense-card card recurring-expense">
+									<div class="expense-header">
+										<div>
+											<h3 class="expense-title">
+												${getCategoryIcon(expense.category)} ${expense.description}
+											</h3>
+											<p class="expense-date">Día ${expense.recurrence_day} de cada mes</p>
+										</div>
+										<span class="expense-category badge badge-recurring">🔄 Recurrente</span>
+									</div>
+									<div class="expense-body">
+										<div class="expense-amount">${formatCurrency(expense.amount)}</div>
+										<div style="display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: center">
+											<button class="btn btn-primary edit-expense-btn" data-id="${expense.id}">
+												✏️
+											</button>
+											<button class="btn btn-danger delete-expense-btn" data-id="${expense.id}">
+												🗑️
+											</button>
+										</div>
+									</div>
+								</div>
+							`;
+                })
+                .join("");
+        }
+
+        // Render one-time expenses
+        if (oneTimeExpenses.length === 0) {
+            oneTimeList.style.display = "none";
+            oneTimeEmptyState.style.display = "block";
+        } else {
+            oneTimeList.style.display = "grid";
+            oneTimeEmptyState.style.display = "none";
+
+            oneTimeList.innerHTML = oneTimeExpenses
+                .map((expense) => {
+                    return `
+								<div class="expense-card card">
+									<div class="expense-header">
+										<div>
+											<h3 class="expense-title">
+												${getCategoryIcon(expense.category)} ${expense.description}
+											</h3>
+											<p class="expense-date">${formatDate(expense.expense_date)}</p>
+										</div>
+										<span class="expense-category badge">${expense.category}</span>
+									</div>
+									<div class="expense-body">
+										<div class="expense-amount">${formatCurrency(expense.amount)}</div>
+										<div style="display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: center"">
+											<button class="btn btn-primary edit-expense-btn" data-id="${expense.id}">
+												✏️
+											</button>
+											<button class="btn btn-danger delete-expense-btn" data-id="${expense.id}">
+												🗑️
+											</button>
+										</div>
+									</div>
+								</div>
+							`;
+                })
+                .join("");
+        }
+
+        // Attach event handlers
+        attachExpenseHandlers(expenses);
+    }
+
+    // Attach event handlers to expense buttons
+    function attachExpenseHandlers(expenses: any[]) {
+        // Delete handlers
+        document.querySelectorAll(".delete-expense-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const expenseId = (btn as HTMLElement).dataset.id;
+                if (
+                    expenseId &&
+                    confirm("¿Estás seguro de eliminar este gasto?")
+                ) {
+                    await deleteExpense(expenseId);
+                }
+            });
+        });
+
+        // Edit handlers
+        document.querySelectorAll(".edit-expense-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const expenseId = (btn as HTMLElement).dataset.id;
+                const expense = expenses.find((e) => e.id === expenseId);
+                if (expense) {
+                    openEditModal(expense);
+                }
+            });
+        });
+    }
+
+    // Delete expense
+    async function deleteExpense(expenseId: string) {
+        try {
+            const response = await fetch(`/api/expenses/${expenseId}`, {
+                method: "DELETE",
+            });
+            const data = await response.json();
+            if (data.success) {
+                loadExpenses();
+            } else {
+                alert(data.error || "Error al eliminar gasto");
+            }
+        } catch (error) {
+            alert("Error de conexión");
+        }
+    }
+
+    // Open edit modal
+    function openEditModal(expense: any) {
+        const modal = document.getElementById("edit-modal");
+        const editRecurringCheckbox = document.getElementById(
+            "edit-recurring",
+        ) as HTMLInputElement;
+        const editRecurrenceDayField = document.getElementById(
+            "edit-recurrence-day-field",
+        );
+        const editRecurrenceDayInput = document.getElementById(
+            "edit-recurrence-day",
+        ) as HTMLInputElement;
+
+        if (!modal) return;
+
+        // Populate form
+        (document.getElementById("edit-expense-id") as HTMLInputElement).value =
+            expense.id;
+        (
+            document.getElementById("edit-description") as HTMLInputElement
+        ).value = expense.description;
+        (document.getElementById("edit-amount") as HTMLInputElement).value =
+            expense.amount;
+        (document.getElementById("edit-category") as HTMLSelectElement).value =
+            expense.category;
+        (document.getElementById("edit-date") as HTMLInputElement).value =
+            expense.expense_date;
+
+        editRecurringCheckbox.checked = expense.is_recurring === 1;
+        if (expense.is_recurring === 1 && expense.recurrence_day) {
+            editRecurrenceDayInput.value = expense.recurrence_day;
+            if (editRecurrenceDayField) {
+                editRecurrenceDayField.style.display = "block";
+            }
+        } else {
+            if (editRecurrenceDayField) {
+                editRecurrenceDayField.style.display = "none";
+            }
+        }
+
+        modal.style.display = "flex";
+    }
+
+    // Close edit modal
+    function closeEditModal() {
+        const modal = document.getElementById("edit-modal");
+        if (modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Update expense
+    async function updateExpense(expenseId: string, updates: any) {
+        try {
+            const response = await fetch(`/api/expenses/${expenseId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updates),
+            });
+            const data = await response.json();
+            if (data.success) {
+                closeEditModal();
+                loadExpenses();
+            } else {
+                alert(data.error || "Error al actualizar gasto");
+            }
+        } catch (error) {
+            alert("Error de conexión");
+        }
+    }
+
+    // Update statistics
+    function updateStats(expenses: any[]) {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+
+        // Calculate monthly total (one-time expenses for current month)
+        const monthlyExpenses = expenses.filter((e) => {
+            if (e.is_recurring === 1) return false;
+            const date = new Date(e.expense_date);
+            return (
+                date.getFullYear() === currentYear &&
+                date.getMonth() + 1 === currentMonth
+            );
+        });
+        const monthlyOneTimeTotal = monthlyExpenses.reduce(
+            (sum, e) => sum + e.amount,
+            0,
+        );
+
+        // Calculate recurring monthly total
+        const recurringExpenses = expenses.filter((e) => e.is_recurring === 1);
+        const recurringMonthlyTotal = recurringExpenses.reduce(
+            (sum, e) => sum + e.amount,
+            0,
+        );
+
+        // Total monthly = one-time + recurring
+        const monthlyTotal = monthlyOneTimeTotal + recurringMonthlyTotal;
+
+        // Calculate annual total
+        const annualExpenses = expenses.filter((e) => {
+            if (e.is_recurring === 1) return false;
+            const date = new Date(e.expense_date);
+            return date.getFullYear() === currentYear;
+        });
+        const annualOneTimeTotal = annualExpenses.reduce(
+            (sum, e) => sum + e.amount,
+            0,
+        );
+        // Annual total = one-time expenses + (recurring * 12)
+        const annualTotal = annualOneTimeTotal + recurringMonthlyTotal * 12;
+
+        // Update UI
+        const monthlyTotalEl = document.getElementById("monthly-total");
+        const annualTotalEl = document.getElementById("annual-total");
+        const expenseCountEl = document.getElementById("expense-count");
+
+        if (monthlyTotalEl)
+            monthlyTotalEl.textContent = formatCurrency(monthlyTotal);
+        if (annualTotalEl)
+            annualTotalEl.textContent = formatCurrency(annualTotal);
+        if (expenseCountEl)
+            expenseCountEl.textContent = expenses.length.toString();
+    }
+
+    // Populate year filter
+    function populateYearFilter() {
+        const yearSelect = document.getElementById(
+            "filter-year",
+        ) as HTMLSelectElement;
+        if (!yearSelect) return;
+
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year >= currentYear - 10; year--) {
+            const option = document.createElement("option");
+            option.value = year.toString();
+            option.textContent = year.toString();
+            if (year === currentYear) option.selected = true;
+            yearSelect.appendChild(option);
+        }
+    }
+
+    // Listen for expense created event
+    window.addEventListener("expense-created", () => {
+        loadExpenses();
+    });
+
+    // Listen for filter changes
+    document
+        .getElementById("filter-year")
+        ?.addEventListener("change", loadExpenses);
+    document
+        .getElementById("filter-month")
+        ?.addEventListener("change", loadExpenses);
+
+    // Edit modal event listeners
+    const editModal = document.getElementById("edit-modal");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    const cancelEditBtn = document.getElementById("cancel-edit-btn");
+    const editExpenseForm = document.getElementById(
+        "edit-expense-form",
+    ) as HTMLFormElement;
+    const editRecurringCheckbox = document.getElementById(
+        "edit-recurring",
+    ) as HTMLInputElement;
+    const editRecurrenceDayField = document.getElementById(
+        "edit-recurrence-day-field",
+    );
+    const editRecurrenceDayInput = document.getElementById(
+        "edit-recurrence-day",
+    ) as HTMLInputElement;
+
+    // Close modal on close button
+    closeModalBtn?.addEventListener("click", closeEditModal);
+    cancelEditBtn?.addEventListener("click", closeEditModal);
+
+    // Close modal on overlay click
+    editModal?.addEventListener("click", (e) => {
+        if (e.target === editModal) {
+            closeEditModal();
+        }
+    });
+
+    // Toggle recurrence day field in edit modal
+    editRecurringCheckbox?.addEventListener("change", () => {
+        if (editRecurrenceDayField) {
+            editRecurrenceDayField.style.display = editRecurringCheckbox.checked
+                ? "block"
+                : "none";
+            if (editRecurringCheckbox.checked) {
+                editRecurrenceDayInput.required = true;
+            } else {
+                editRecurrenceDayInput.required = false;
+                editRecurrenceDayInput.value = "";
+            }
+        }
+    });
+
+    // Handle edit form submission
+    editExpenseForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const expenseId = (
+            document.getElementById("edit-expense-id") as HTMLInputElement
+        ).value;
+        const updates: any = {
+            description: (
+                document.getElementById("edit-description") as HTMLInputElement
+            ).value,
+            amount: (document.getElementById("edit-amount") as HTMLInputElement)
+                .value,
+            category: (
+                document.getElementById("edit-category") as HTMLSelectElement
+            ).value,
+            expenseDate: (
+                document.getElementById("edit-date") as HTMLInputElement
+            ).value,
+            isRecurring: editRecurringCheckbox.checked,
+        };
+
+        if (editRecurringCheckbox.checked) {
+            updates.recurrenceDay = editRecurrenceDayInput.value;
+        }
+
+        await updateExpense(expenseId, updates);
+    });
+
+    // Initial load
+    populateYearFilter();
+    loadExpenses();
+</script>
+
+<style>
+    /* Header Styles */
+    .main-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        position: relative;
+    }
+
+    .header-user-section {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .user-info {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .logout-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .header-content {
+        margin-top: 1rem;
+    }
+
+    .header-title {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(
+            135deg,
+            hsl(260, 85%, 65%),
+            hsl(200, 90%, 60%)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .header-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+
+    /* Expenses Grid */
+    .expenses-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    .expense-card {
+        animation: slideUp 0.3s ease;
+        padding: 1rem;
+    }
+
+    .expense-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+        gap: 0.75rem;
+    }
+
+    .expense-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.15rem;
+        color: var(--text-primary);
+    }
+
+    .expense-date {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+    }
+
+    .expense-category {
+        background: rgba(139, 92, 246, 0.15);
+        color: var(--color-primary);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        white-space: nowrap;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .badge-recurring {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--color-success);
+        border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .recurring-expense {
+        border-color: rgba(52, 211, 153, 0.3);
+    }
+
+    .expense-body {
+        margin-bottom: 0;
+    }
+
+    .expense-amount {
+        font-size: 1.35rem;
+        font-weight: 700;
+        background: linear-gradient(
+            135deg,
+            hsl(260, 85%, 65%),
+            hsl(200, 90%, 60%)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive Styles */
+    @media (max-width: 768px) {
+        .header-user-section {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.5rem;
+        }
+
+        .user-info {
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .logout-btn {
+            width: 100%;
+        }
+
+        .header-title {
+            font-size: 2rem;
+        }
+
+        .header-subtitle {
+            font-size: 0.95rem;
+        }
+
+        .expenses-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .header-title {
+            font-size: 1.75rem;
+        }
+
+        .header-subtitle {
+            font-size: 0.9rem;
+        }
+    }
+</style>
