@@ -41,12 +41,6 @@ try {
 					<span id="user-info" class="user-info">
 						👤 {session.username}
 					</span>
-					<button
-						id="logout-btn"
-						class="btn btn-secondary logout-btn"
-					>
-						🚪 Cerrar Sesión
-					</button>
 				</div>
 				<div class="header-content">
 					<h1 class="header-title">💸 Gestor de Préstamos</h1>
@@ -265,16 +259,6 @@ try {
 					day: "numeric",
 				}).format(new Date(dateString));
 			}
-
-			// Logout handler
-			document
-				.getElementById("logout-btn")
-				?.addEventListener("click", async () => {
-					if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
-						await fetch("/api/auth/logout", { method: "POST" });
-						window.location.href = "/auth";
-					}
-				});
 
 			// Mark loan as returned
 			async function markAsReturned(loanId: string) {

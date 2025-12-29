@@ -9,31 +9,31 @@
   --color-warning: hsl(40, 95%, 60%);
   --color-danger: hsl(355, 75%, 60%);
   --color-info: hsl(200, 90%, 60%);
-  
+
   /* Backgrounds */
   --bg-primary: hsl(240, 15%, 8%);
   --bg-secondary: hsl(240, 12%, 12%);
   --bg-tertiary: hsl(240, 10%, 16%);
   --bg-card: hsl(240, 12%, 14%);
   --bg-hover: hsl(240, 10%, 18%);
-  
+
   /* Text */
   --text-primary: hsl(0, 0%, 98%);
   --text-secondary: hsl(0, 0%, 75%);
   --text-tertiary: hsl(0, 0%, 55%);
-  
+
   /* Borders */
   --border-color: hsl(240, 8%, 22%);
   --border-radius: 12px;
   --border-radius-lg: 16px;
   --border-radius-sm: 8px;
-  
+
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.3);
-  
+
   /* Spacing */
   --spacing-xs: 0.5rem;
   --spacing-sm: 0.75rem;
@@ -41,7 +41,7 @@
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
-  
+
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
@@ -192,10 +192,10 @@ body {
   display: inline-block;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-size: 0.50rem;
 }
 
 .badge-pending {
@@ -305,6 +305,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -315,6 +316,7 @@ body {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -322,9 +324,12 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -357,12 +362,12 @@ body {
   .container {
     padding: var(--spacing-lg) var(--spacing-md);
   }
-  
+
   .modal {
     width: 95%;
     padding: var(--spacing-lg);
   }
-  
+
   .grid-2 {
     grid-template-columns: 1fr;
   }
