@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS payments (
     loan_id TEXT NOT NULL,
     amount REAL NOT NULL,
     payment_type TEXT NOT NULL CHECK(payment_type IN ('partial', 'full')),
-    evidence_url TEXT NOT NULL,
+    evidence_url TEXT,
     status TEXT NOT NULL CHECK(status IN ('pending', 'confirmed', 'rejected')),
     notes TEXT,
     rejection_reason TEXT,

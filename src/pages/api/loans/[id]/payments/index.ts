@@ -121,7 +121,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
         const { amount, paymentType, evidenceUrl, notes } = body;
 
         // Validate input
-        if (!amount || !paymentType || !evidenceUrl) {
+        if (!amount || !paymentType || evidenceUrl) {
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Monto, tipo de pago y evidencia son requeridos'

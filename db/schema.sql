@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS payments (
     payment_type TEXT NOT NULL CHECK (
         payment_type IN ('partial', 'full')
     ),
-    evidence_url TEXT NOT NULL,
+    evidence_url TEXT,
     status TEXT NOT NULL CHECK (
         status IN (
             'pending',
